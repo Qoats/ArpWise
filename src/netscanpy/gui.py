@@ -14,6 +14,91 @@ from .network import detect_local_network, parse_network
 from .scanner import Device, scan_network
 
 
+TRANSLATIONS = {
+    "fr": {
+        "network": "Réseau", "scan": "Scanner", "ip": "Adresse IP",
+        "mac": "Adresse MAC", "hostname": "Nom d'hôte", "label": "Étiquette",
+        "language": "Language", "ready": "Prêt", "devices": "appareils",
+        "ping": "Ping", "traceroute": "Traceroute", "scan_ports": "Scanner les ports courants",
+        "open_browser": "Ouvrir dans le navigateur", "copy_ip": "Copier l'IP",
+        "copy_mac": "Copier la MAC", "copy_hostname": "Copier le nom d'hôte",
+        "details": "Afficher les détails", "set_label": "Définir une étiquette",
+        "remove_label": "Supprimer l'étiquette", "copy": "Copier", "close": "Fermer",
+        "summary": "Résumé", "terminal": "Sortie terminal", "waiting": "En attente des résultats...",
+        "in_progress": "en cours...", "success": "réussi", "no_response": "aucune réponse",
+        "error": "erreur", "open": "Ouvert", "closed": "Fermé", "status": "État",
+        "service": "Service", "port": "Port", "unknown": "Inconnu", "none": "Aucune",
+        "device_details": "Détails de l'appareil", "common_ports": "Ports courants",
+        "scanning_ports": "Analyse des ports courants sur {ip}...",
+        "scan_complete_ports": "Analyse terminée - {count} port(s) ouvert(s)",
+        "label_for": "Étiquette pour {mac} :", "no_hostname": "Aucun nom d'hôte disponible pour cet appareil.",
+        "scan_complete": "Analyse terminée", "scan_failed": "Échec de l'analyse",
+        "scanning": "Analyse de {network}...", "device": "appareil",
+        "copied": "{what} copié", "opening": "Ouverture de http://{ip}",
+    },
+    "en": {
+        "network": "Network", "scan": "Scan", "ip": "IP address",
+        "mac": "MAC address", "hostname": "Hostname", "label": "Label",
+        "language": "Language", "ready": "Ready", "devices": "devices",
+        "ping": "Ping", "traceroute": "Traceroute", "scan_ports": "Scan common ports",
+        "open_browser": "Open in browser", "copy_ip": "Copy IP", "copy_mac": "Copy MAC",
+        "copy_hostname": "Copy hostname", "details": "Show details", "set_label": "Set label",
+        "remove_label": "Remove label", "copy": "Copy", "close": "Close",
+        "summary": "Summary", "terminal": "Terminal output", "waiting": "Waiting for results...",
+        "in_progress": "in progress...", "success": "success", "no_response": "no response",
+        "error": "error", "open": "Open", "closed": "Closed", "status": "Status",
+        "service": "Service", "port": "Port", "unknown": "Unknown", "none": "None",
+        "device_details": "Device details", "common_ports": "Common ports",
+        "scanning_ports": "Scanning common ports on {ip}...",
+        "scan_complete_ports": "Scan complete - {count} open port(s) found",
+        "label_for": "Label for {mac}:", "no_hostname": "No hostname is available for this device.",
+        "scan_complete": "Scan complete", "scan_failed": "Scan failed",
+        "scanning": "Scanning {network}...", "device": "device",
+        "copied": "{what} copied", "opening": "Opening http://{ip}",
+    },
+    "de": {
+        "network": "Netzwerk", "scan": "Scannen", "ip": "IP-Adresse",
+        "mac": "MAC-Adresse", "hostname": "Hostname", "label": "Bezeichnung",
+        "language": "Language", "ready": "Bereit", "devices": "Geräte",
+        "ping": "Ping", "traceroute": "Traceroute", "scan_ports": "Häufige Ports scannen",
+        "open_browser": "Im Browser öffnen", "copy_ip": "IP kopieren", "copy_mac": "MAC kopieren",
+        "copy_hostname": "Hostname kopieren", "details": "Details anzeigen", "set_label": "Bezeichnung setzen",
+        "remove_label": "Bezeichnung entfernen", "copy": "Kopieren", "close": "Schließen",
+        "summary": "Zusammenfassung", "terminal": "Terminalausgabe", "waiting": "Warte auf Ergebnisse...",
+        "in_progress": "läuft...", "success": "erfolgreich", "no_response": "keine Antwort",
+        "error": "Fehler", "open": "Offen", "closed": "Geschlossen", "status": "Status",
+        "service": "Dienst", "port": "Port", "unknown": "Unbekannt", "none": "Keine",
+        "device_details": "Gerätedetails", "common_ports": "Häufige Ports",
+        "scanning_ports": "Häufige Ports auf {ip} werden gescannt...",
+        "scan_complete_ports": "Scan beendet - {count} offene Port(s)",
+        "label_for": "Bezeichnung für {mac}:", "no_hostname": "Für dieses Gerät ist kein Hostname verfügbar.",
+        "scan_complete": "Scan abgeschlossen", "scan_failed": "Scan fehlgeschlagen",
+        "scanning": "Scanne {network}...", "device": "Gerät",
+        "copied": "{what} kopiert", "opening": "Öffne http://{ip}",
+    },
+    "zh": {
+        "network": "网络", "scan": "扫描", "ip": "IP 地址",
+        "mac": "MAC 地址", "hostname": "主机名", "label": "标签",
+        "language": "Language", "ready": "就绪", "devices": "台设备",
+        "ping": "Ping", "traceroute": "路由跟踪", "scan_ports": "扫描常用端口",
+        "open_browser": "在浏览器中打开", "copy_ip": "复制 IP", "copy_mac": "复制 MAC",
+        "copy_hostname": "复制主机名", "details": "显示详细信息", "set_label": "设置标签",
+        "remove_label": "删除标签", "copy": "复制", "close": "关闭",
+        "summary": "摘要", "terminal": "终端输出", "waiting": "等待结果...",
+        "in_progress": "进行中...", "success": "成功", "no_response": "无响应",
+        "error": "错误", "open": "开放", "closed": "关闭", "status": "状态",
+        "service": "服务", "port": "端口", "unknown": "未知", "none": "无",
+        "device_details": "设备详情", "common_ports": "常用端口",
+        "scanning_ports": "正在扫描 {ip} 的常用端口...",
+        "scan_complete_ports": "扫描完成 - 找到 {count} 个开放端口",
+        "label_for": "{mac} 的标签：", "no_hostname": "此设备没有可用的主机名。",
+        "scan_complete": "扫描完成", "scan_failed": "扫描失败",
+        "scanning": "正在扫描 {network}...", "device": "设备",
+        "copied": "已复制{what}", "opening": "正在打开 http://{ip}",
+    },
+}
+
+
 class NetScanPyApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -22,13 +107,74 @@ class NetScanPyApp(tk.Tk):
         self.geometry("820x520")
         self.minsize(700, 420)
 
+        self.language = "fr"
         self.network_var = tk.StringVar()
-        self.status_var = tk.StringVar(value="Ready")
+        self.status_var = tk.StringVar(value=self._t("ready"))
         self.count_var = tk.StringVar(value="0 devices")
         self.device_labels = load_labels()
 
         self._build_ui()
+        self._build_menu()
+        self._apply_language()
         self._load_default_network()
+
+    def _t(self, key: str, **kwargs: object) -> str:
+        text = TRANSLATIONS.get(self.language, TRANSLATIONS["en"]).get(key, key)
+        return text.format(**kwargs)
+
+    def _build_menu(self) -> None:
+        self.menu_bar = tk.Menu(self)
+        self.language_menu = tk.Menu(self.menu_bar, tearoff=False)
+
+        self.language_menu.add_radiobutton(
+            label="Français", command=lambda: self._set_language("fr")
+        )
+        self.language_menu.add_radiobutton(
+            label="English", command=lambda: self._set_language("en")
+        )
+        self.language_menu.add_radiobutton(
+            label="Deutsch", command=lambda: self._set_language("de")
+        )
+        self.language_menu.add_radiobutton(
+            label="中文", command=lambda: self._set_language("zh")
+        )
+
+        self.menu_bar.add_cascade(label="Language", menu=self.language_menu)
+        self.config(menu=self.menu_bar)
+
+    def _set_language(self, language: str) -> None:
+        if language not in TRANSLATIONS:
+            return
+        self.language = language
+        self._apply_language()
+
+    def _apply_language(self) -> None:
+        if hasattr(self, "network_label"):
+            self.network_label.configure(text=self._t("network"))
+            self.scan_button.configure(text=self._t("scan"))
+            self.tree.heading("ip", text=self._t("ip"))
+            self.tree.heading("mac", text=self._t("mac"))
+            self.tree.heading("hostname", text=self._t("hostname"))
+            self.tree.heading("label", text=self._t("label"))
+
+            menu_labels = (
+                self._t("ping"),
+                self._t("traceroute"),
+                self._t("scan_ports"),
+                self._t("open_browser"),
+                self._t("copy_ip"),
+                self._t("copy_mac"),
+                self._t("copy_hostname"),
+                self._t("details"),
+                self._t("set_label"),
+                self._t("remove_label"),
+            )
+            command_indexes = (0, 1, 2, 4, 6, 7, 8, 10, 12, 13)
+            for index, label in zip(command_indexes, menu_labels):
+                self.context_menu.entryconfigure(index, label=label)
+
+        if self.status_var.get() in ("Ready", "Prêt", "Bereit", "就绪"):
+            self.status_var.set(self._t("ready"))
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
@@ -38,9 +184,8 @@ class NetScanPyApp(tk.Tk):
         top.grid(row=0, column=0, sticky="ew")
         top.columnconfigure(1, weight=1)
 
-        ttk.Label(top, text="Network").grid(
-            row=0, column=0, padx=(0, 8), sticky="w"
-        )
+        self.network_label = ttk.Label(top, text=self._t("network"))
+        self.network_label.grid(row=0, column=0, padx=(0, 8), sticky="w")
 
         self.network_entry = ttk.Entry(
             top,
@@ -50,7 +195,7 @@ class NetScanPyApp(tk.Tk):
 
         self.scan_button = ttk.Button(
             top,
-            text="Scan",
+            text=self._t("scan"),
             command=self.start_scan,
         )
         self.scan_button.grid(row=0, column=2, padx=(8, 0))
@@ -67,10 +212,10 @@ class NetScanPyApp(tk.Tk):
             selectmode="browse",
         )
 
-        self.tree.heading("ip", text="IP address")
-        self.tree.heading("mac", text="MAC address")
-        self.tree.heading("hostname", text="Hostname")
-        self.tree.heading("label", text="Label")
+        self.tree.heading("ip", text=self._t("ip"))
+        self.tree.heading("mac", text=self._t("mac"))
+        self.tree.heading("hostname", text=self._t("hostname"))
+        self.tree.heading("label", text=self._t("label"))
 
         self.tree.column("ip", width=140, minwidth=120, anchor="w")
         self.tree.column("mac", width=190, minwidth=160, anchor="w")
@@ -88,29 +233,29 @@ class NetScanPyApp(tk.Tk):
         scrollbar.grid(row=0, column=1, sticky="ns")
 
         self.context_menu = tk.Menu(self, tearoff=False)
-        self.context_menu.add_command(label="Ping", command=self.ping_selected)
-        self.context_menu.add_command(label="Traceroute", command=self.traceroute_selected)
+        self.context_menu.add_command(label=self._t("ping"), command=self.ping_selected)
+        self.context_menu.add_command(label=self._t("traceroute"), command=self.traceroute_selected)
         self.context_menu.add_command(
-            label="Scan common ports",
+            label=self._t("scan_ports"),
             command=self.scan_common_ports_selected,
         )
         self.context_menu.add_separator()
         self.context_menu.add_command(
-            label="Open in browser",
+            label=self._t("open_browser"),
             command=self.open_in_browser_selected,
         )
         self.context_menu.add_separator()
-        self.context_menu.add_command(label="Copy IP", command=self.copy_ip_selected)
-        self.context_menu.add_command(label="Copy MAC", command=self.copy_mac_selected)
+        self.context_menu.add_command(label=self._t("copy_ip"), command=self.copy_ip_selected)
+        self.context_menu.add_command(label=self._t("copy_mac"), command=self.copy_mac_selected)
         self.context_menu.add_command(
-            label="Copy hostname",
+            label=self._t("copy_hostname"),
             command=self.copy_hostname_selected,
         )
         self.context_menu.add_separator()
-        self.context_menu.add_command(label="Show details", command=self.show_details_selected)
+        self.context_menu.add_command(label=self._t("details"), command=self.show_details_selected)
         self.context_menu.add_separator()
-        self.context_menu.add_command(label="Set label", command=self.set_label_selected)
-        self.context_menu.add_command(label="Remove label", command=self.remove_label_selected)
+        self.context_menu.add_command(label=self._t("set_label"), command=self.set_label_selected)
+        self.context_menu.add_command(label=self._t("remove_label"), command=self.remove_label_selected)
         self.tree.bind("<ButtonRelease-3>", self._show_context_menu)
         self.tree.bind("<Shift-F10>", self._show_context_menu_keyboard)
 
@@ -186,7 +331,7 @@ class NetScanPyApp(tk.Tk):
             return
         self.clipboard_clear()
         self.clipboard_append(value)
-        self.status_var.set(f"{description} copied")
+        self.status_var.set(self._t("copied", what=description))
 
     def copy_ip_selected(self) -> None:
         values = self._selected_device_values()
@@ -208,7 +353,7 @@ class NetScanPyApp(tk.Tk):
             return
         _, _, hostname, _ = values
         if not hostname or hostname == "Unknown":
-            messagebox.showinfo("NetScanPy", "No hostname is available for this device.")
+            messagebox.showinfo("NetScanPy", self._t("no_hostname"))
             return
         self._copy_to_clipboard(hostname, "Hostname")
 
@@ -218,7 +363,7 @@ class NetScanPyApp(tk.Tk):
             return
         ip, _, _, _ = values
         webbrowser.open(f"http://{ip}")
-        self.status_var.set(f"Opening http://{ip}")
+        self.status_var.set(self._t("opening", ip=ip))
 
     def show_details_selected(self) -> None:
         values = self._selected_device_values()
@@ -227,7 +372,7 @@ class NetScanPyApp(tk.Tk):
 
         ip, mac, hostname, label = values
         window = tk.Toplevel(self)
-        window.title(f"Device details - {ip}")
+        window.title(f"{self._t(\"device_details\")} - {ip}")
         window.geometry("460x280")
         window.resizable(False, False)
         window.transient(self)
@@ -236,10 +381,10 @@ class NetScanPyApp(tk.Tk):
         frame.pack(fill="both", expand=True)
 
         details = (
-            ("IP address", ip),
-            ("MAC address", mac),
-            ("Hostname", hostname or "Unknown"),
-            ("Label", label or "None"),
+            (self._t("ip"), ip),
+            (self._t("mac"), mac),
+            (self._t("hostname"), hostname or self._t("unknown")),
+            (self._t("label"), label or self._t("none")),
         )
 
         for row, (name, value) in enumerate(details):
@@ -257,7 +402,7 @@ class NetScanPyApp(tk.Tk):
                 pady=7,
             )
 
-        ttk.Button(frame, text="Close", command=window.destroy).grid(
+        ttk.Button(frame, text=self._t("close"), command=window.destroy).grid(
             row=len(details),
             column=1,
             sticky="e",
@@ -312,7 +457,7 @@ class NetScanPyApp(tk.Tk):
 
         terminal_frame = ttk.LabelFrame(
             container,
-            text="Terminal output",
+            text=self._t("terminal"),
             padding=8,
         )
         terminal_frame.pack(fill="both", expand=True, pady=(10, 0))
@@ -346,8 +491,8 @@ class NetScanPyApp(tk.Tk):
             window.clipboard_clear()
             window.clipboard_append(output)
 
-        ttk.Button(button_frame, text="Copy", command=copy_output).pack(side="left")
-        ttk.Button(button_frame, text="Close", command=window.destroy).pack(side="right")
+        ttk.Button(button_frame, text=self._t("copy"), command=copy_output).pack(side="left")
+        ttk.Button(button_frame, text=self._t("close"), command=window.destroy).pack(side="right")
 
         def worker() -> None:
             try:
@@ -431,14 +576,14 @@ class NetScanPyApp(tk.Tk):
         }
 
         window = tk.Toplevel(self)
-        window.title(f"Common ports - {ip}")
+        window.title(f"{self._t(\"common_ports\")} - {ip}")
         window.geometry("500x430")
         window.transient(self)
 
         frame = ttk.Frame(window, padding=12)
         frame.pack(fill="both", expand=True)
 
-        status = ttk.Label(frame, text=f"Scanning common ports on {ip}...")
+        status = ttk.Label(frame, text=self._t("scanning_ports", ip=ip))
         status.pack(anchor="w")
 
         tree = ttk.Treeview(
@@ -446,9 +591,9 @@ class NetScanPyApp(tk.Tk):
             columns=("port", "service", "status"),
             show="headings",
         )
-        tree.heading("port", text="Port")
-        tree.heading("service", text="Service")
-        tree.heading("status", text="Status")
+        tree.heading("port", text=self._t("port"))
+        tree.heading("service", text=self._t("service"))
+        tree.heading("status", text=self._t("status"))
         tree.column("port", width=90, anchor="center")
         tree.column("service", width=180)
         tree.column("status", width=120, anchor="center")
@@ -473,7 +618,7 @@ class NetScanPyApp(tk.Tk):
                 if is_open:
                     open_count += 1
 
-                status_text = "Open" if is_open else "Closed"
+                status_text = self._t("open") if is_open else self._t("closed")
                 self.after(
                     0,
                     self._insert_port_result,
@@ -486,7 +631,7 @@ class NetScanPyApp(tk.Tk):
             self.after(
                 0,
                 status.configure,
-                {"text": f"Scan complete - {open_count} open port(s) found"},
+                {"text": self._t("scan_complete_ports", count=open_count)},
             )
 
         threading.Thread(target=worker, daemon=True).start()
@@ -500,7 +645,7 @@ class NetScanPyApp(tk.Tk):
 
         label = simpledialog.askstring(
             "NetScanPy",
-            f"Label for {mac}:",
+            self._t("label_for", mac=mac),
             initialvalue=current_label,
             parent=self,
         )
@@ -667,28 +812,28 @@ class NetScanPyApp(tk.Tk):
 
         title_label = ttk.Label(
             container,
-            text=f"Ping {ip} - in progress...",
+            text=f"Ping {ip} - {self._t(\"in_progress\")}",
             font=("Segoe UI", 11, "bold"),
         )
         title_label.pack(anchor="w")
 
         summary_frame = ttk.LabelFrame(
             container,
-            text="Summary",
+            text=self._t("summary"),
             padding=10,
         )
         summary_frame.pack(fill="x", pady=(10, 10))
 
         summary_label = ttk.Label(
             summary_frame,
-            text="Waiting for ping results...",
+            text=self._t("waiting"),
             justify="left",
         )
         summary_label.pack(anchor="w")
 
         terminal_frame = ttk.LabelFrame(
             container,
-            text="Terminal output",
+            text=self._t("terminal"),
             padding=8,
         )
         terminal_frame.pack(fill="both", expand=True)
@@ -786,11 +931,11 @@ class NetScanPyApp(tk.Tk):
         if success:
             self.status_var.set(f"{ip} responded to ping")
             if isinstance(title_label, ttk.Label):
-                title_label.configure(text=f"Ping {ip} - success")
+                title_label.configure(text=f"Ping {ip} - {self._t(\"success\")}")
         else:
             self.status_var.set(f"{ip} did not respond to ping")
             if isinstance(title_label, ttk.Label):
-                title_label.configure(text=f"Ping {ip} - no response")
+                title_label.configure(text=f"Ping {ip} - {self._t(\"no_response\")}")
 
         summary = self._extract_ping_summary(output)
         if isinstance(summary_label, ttk.Label):
@@ -818,7 +963,7 @@ class NetScanPyApp(tk.Tk):
         summary_label = ping_window["summary_label"]
 
         if isinstance(title_label, ttk.Label):
-            title_label.configure(text=f"Ping {ip} - error")
+            title_label.configure(text=f"Ping {ip} - {self._t(\"error\")}")
         if isinstance(summary_label, ttk.Label):
             summary_label.configure(text=error)
 
@@ -840,8 +985,8 @@ class NetScanPyApp(tk.Tk):
             return
 
         self._clear_results()
-        self.status_var.set(f"Scanning {network}...")
-        self.count_var.set("0 devices")
+        self.status_var.set(self._t("scanning", network=network))
+        self.count_var.set(f"0 {self._t(\"devices\")}")
         self.scan_button.state(["disabled"])
         self.network_entry.state(["disabled"])
         self.progress.start(10)
@@ -877,13 +1022,13 @@ class NetScanPyApp(tk.Tk):
 
         count = len(devices)
         self.count_var.set(
-            f"{count} device" if count == 1 else f"{count} devices"
+            f"{count} {self._t(\"device\")}" if count == 1 else f"{count} {self._t(\"devices\")}"
         )
-        self.status_var.set("Scan complete")
+        self.status_var.set(self._t("scan_complete"))
         self._set_idle_state()
 
     def _scan_failed(self, error: str) -> None:
-        self.status_var.set("Scan failed")
+        self.status_var.set(self._t("scan_failed"))
         self._set_idle_state()
         messagebox.showerror("NetScanPy", error)
 
