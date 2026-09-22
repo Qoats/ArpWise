@@ -7,14 +7,19 @@ NetScanPy is a lightweight open-source Python tool for discovering devices on yo
 - **Windows:** the built-in `SendARP` API from `iphlpapi.dll`
 - **Linux:** normal UDP sockets to trigger neighbor discovery, then `/proc/net/arp`
 
-It displays:
+NetScanPy can be used from the terminal or through a Tkinter graphical interface.
 
-- IPv4 address
-- MAC address
-- Hostname when available
+## Features
+
+- IPv4 address discovery
+- MAC address discovery
+- Hostname resolution when available
 - Automatic local network detection
-- Clean terminal output with Rich
-- Optional manual CIDR selection
+- Terminal interface
+- Graphical interface
+- Manual CIDR selection
+- No Npcap
+- No Scapy
 
 > Use NetScanPy only on networks you own or are authorized to inspect.
 
@@ -24,7 +29,14 @@ It displays:
 - Windows 10/11 or Linux
 - No Npcap required
 - No Scapy required
-- No root/admin privileges normally required
+
+On Linux, Tkinter may need to be installed separately by your distribution if you want to use the GUI.
+
+For Debian/Ubuntu:
+
+```bash
+sudo apt install python3-tk
+```
 
 ## Installation
 
@@ -43,19 +55,22 @@ python -m venv .venv
 
 ### Windows PowerShell
 
-You do not have to activate the virtual environment:
+You do not need to activate the virtual environment:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e .
-.\.venv\Scripts\netscanpy.exe
 ```
 
-If PowerShell allows virtual-environment activation, you can alternatively use:
+Launch the graphical interface:
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
-pip install -e .
-netscanpy
+.\.venv\Scripts\netscanpy-gui.exe
+```
+
+Launch the terminal interface:
+
+```powershell
+.\.venv\Scripts\netscanpy.exe
 ```
 
 ### Linux
@@ -63,10 +78,21 @@ netscanpy
 ```bash
 source .venv/bin/activate
 pip install -e .
+```
+
+Graphical interface:
+
+```bash
+netscanpy-gui
+```
+
+Terminal interface:
+
+```bash
 netscanpy
 ```
 
-## Usage
+## CLI usage
 
 Scan the automatically detected local network:
 
@@ -86,6 +112,26 @@ Change the neighbor-discovery wait time:
 netscanpy --timeout 2
 ```
 
+## GUI
+
+The graphical interface automatically detects the local network.
+
+Enter or change a CIDR such as:
+
+```text
+192.168.1.0/24
+```
+
+Then click **Scan**.
+
+The scan runs in a background thread so the window remains responsive.
+
+The results table shows:
+
+- IP address
+- MAC address
+- Hostname
+
 ## How it works
 
 ### Windows
@@ -98,25 +144,9 @@ NetScanPy sends a tiny UDP datagram to each address in the selected local subnet
 
 The target UDP port does not need to be open.
 
-## Example
-
-```text
-NetScanPy
-Network: 192.168.1.0/24
-
-┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ IP address    ┃ MAC address       ┃ Hostname         ┃
-┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ 192.168.1.1   │ aa:bb:cc:dd:ee:ff │ router           │
-│ 192.168.1.42  │ 11:22:33:44:55:66 │ desktop          │
-└───────────────┴───────────────────┴──────────────────┘
-
-2 devices found.
-```
-
 ## Current limitations
 
-NetScanPy v0.2 focuses on devices reachable on the same local IPv4 subnet. ARP does not cross routers, so devices on other routed networks are outside the scope of this discovery method.
+NetScanPy focuses on devices reachable on the same local IPv4 subnet. ARP does not cross routers, so devices on other routed networks are outside the scope of this discovery method.
 
 ## Roadmap
 
@@ -125,7 +155,7 @@ NetScanPy v0.2 focuses on devices reachable on the same local IPv4 subnet. ARP d
 - Device history
 - Detection of new devices
 - Optional port discovery
-- Graphical interface
+- GUI improvements
 
 ## License
 
