@@ -194,18 +194,123 @@ class NetScanPyApp(tk.Tk):
             result.stdout.strip(),
         )
 
+    def _extract_ping_summary(self, output: str) -> list[str]:
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        selected: list[str] = []
+
+        keywords = (
+            "Réponse de",
+            "Reply from",
+            "Paquets",
+            "Packets:",
+            "Minimum",
+            "Maximum",
+            "Moyenne",
+            "Average",
+            "TTL=",
+            "temps=",
+            "time=",
+        )
+
+        for line in lines:
+            if any(keyword in line for keyword in keywords):
+                selected.append(line)
+
+        return selected[:12]
+
+    def _show_ping_window(self, ip: str, success: bool, output: str) -> None:
+        window = tk.Toplevel(self)
+        window.title(f"Ping {ip}")
+        window.geometry("760x500")
+        window.minsize(620, 360)
+        window.transient(self)
+
+        container = ttk.Frame(window, padding=12)
+        container.pack(fill="both", expand=True)
+
+        title_text = (
+            f"Ping {ip} - success"
+            if success
+            else f"Ping {ip} - no response"
+        )
+        ttk.Label(
+            container,
+            text=title_text,
+            font=("Segoe UI", 11, "bold"),
+        ).pack(anchor="w")
+
+        summary = self._extract_ping_summary(output)
+        if summary:
+            summary_frame = ttk.LabelFrame(
+                container,
+                text="Summary",
+                padding=10,
+            )
+            summary_frame.pack(fill="x", pady=(10, 10))
+
+            for line in summary:
+                ttk.Label(summary_frame, text=line).pack(anchor="w")
+
+        terminal_frame = ttk.LabelFrame(
+            container,
+            text="Terminal output",
+            padding=8,
+        )
+        terminal_frame.pack(fill="both", expand=True)
+
+        text_widget = tk.Text(
+            terminal_frame,
+            wrap="word",
+            font=("Consolas", 10),
+            bg="#111111",
+            fg="#f0f0f0",
+            insertbackground="#f0f0f0",
+            relief="flat",
+        )
+        text_widget.pack(side="left", fill="both", expand=True)
+
+        scrollbar = ttk.Scrollbar(
+            terminal_frame,
+            orient="vertical",
+            command=text_widget.yview,
+        )
+        scrollbar.pack(side="right", fill="y")
+        text_widget.configure(yscrollcommand=scrollbar.set)
+
+        text_widget.insert(
+            "1.0",
+            output or "No ping output was returned.",
+        )
+        text_widget.configure(state="disabled")
+
+        button_frame = ttk.Frame(container)
+        button_frame.pack(fill="x", pady=(10, 0))
+
+        def copy_output() -> None:
+            window.clipboard_clear()
+            window.clipboard_append(output)
+
+        ttk.Button(
+            button_frame,
+            text="Copy",
+            command=copy_output,
+        ).pack(side="left")
+
+        ttk.Button(
+            button_frame,
+            text="Close",
+            command=window.destroy,
+        ).pack(side="right")
+
+        window.focus_set()
+
     def _ping_finished(self, ip: str, success: bool, output: str) -> None:
         if success:
             self.status_var.set(f"{ip} responded to ping")
-            title = f"Ping {ip} - success"
         else:
             self.status_var.set(f"{ip} did not respond to ping")
-            title = f"Ping {ip} - no response"
 
-        messagebox.showinfo(
-            title,
-            output or "No ping output was returned.",
-        )
+        self._show_ping_window(ip, success, output)
 
     def _ping_failed(self, ip: str, error: str) -> None:
         self.status_var.set(f"Ping failed for {ip}")
