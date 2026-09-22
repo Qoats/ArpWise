@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "netscanpy"
-version = "0.1.0"
+version = "0.2.0"
 description = "Simple open-source local network scanner written in Python."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,7 +13,6 @@ authors = [
   { name = "evergreen-stack" }
 ]
 dependencies = [
-  "scapy>=2.6.1",
   "psutil>=6.0.0",
   "rich>=13.9.0"
 ]
