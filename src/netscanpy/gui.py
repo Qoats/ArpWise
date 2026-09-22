@@ -129,49 +129,83 @@ class NetScanPyApp(tk.Tk):
         return text.format(**kwargs)
 
     def _build_menu(self) -> None:
-        self.menu_bar = tk.Menu(self)
-        self.language_menu = tk.Menu(self.menu_bar, tearoff=False)
-        self.interface_menu = tk.Menu(self.menu_bar, tearoff=False)
+        self.menu_bar_frame = ttk.Frame(self, style="MenuBar.TFrame")
+        self.menu_bar_frame.grid(row=0, column=0, sticky="ew")
+
+        self.language_menu = tk.Menu(self, tearoff=False)
+        self.interface_menu = tk.Menu(self, tearoff=False)
+
+        self.language_choice = tk.StringVar(value=self.language)
+        self.theme_choice = tk.StringVar(value=self.theme)
 
         self.language_menu.add_radiobutton(
-            label="Français", command=lambda: self._set_language("fr")
+            label="Français",
+            variable=self.language_choice,
+            value="fr",
+            command=lambda: self._set_language("fr"),
         )
         self.language_menu.add_radiobutton(
-            label="English", command=lambda: self._set_language("en")
+            label="English",
+            variable=self.language_choice,
+            value="en",
+            command=lambda: self._set_language("en"),
         )
         self.language_menu.add_radiobutton(
-            label="Deutsch", command=lambda: self._set_language("de")
+            label="Deutsch",
+            variable=self.language_choice,
+            value="de",
+            command=lambda: self._set_language("de"),
         )
         self.language_menu.add_radiobutton(
-            label="中文", command=lambda: self._set_language("zh")
+            label="中文",
+            variable=self.language_choice,
+            value="zh",
+            command=lambda: self._set_language("zh"),
         )
 
         self.interface_menu.add_radiobutton(
             label=self._t("light"),
+            variable=self.theme_choice,
+            value="light",
             command=lambda: self._set_theme("light"),
         )
         self.interface_menu.add_radiobutton(
             label=self._t("dark"),
+            variable=self.theme_choice,
+            value="dark",
             command=lambda: self._set_theme("dark"),
         )
 
-        self.menu_bar.add_cascade(label="Language", menu=self.language_menu)
-        self.menu_bar.add_cascade(
-            label=self._t("interface"),
-            menu=self.interface_menu,
+        self.language_button = ttk.Menubutton(
+            self.menu_bar_frame,
+            text=self._t("language"),
+            menu=self.language_menu,
+            style="MenuBar.TMenubutton",
         )
-        self.config(menu=self.menu_bar)
+        self.language_button.pack(side="left", padx=(6, 2), pady=3)
+
+        self.interface_button = ttk.Menubutton(
+            self.menu_bar_frame,
+            text=self._t("interface"),
+            menu=self.interface_menu,
+            style="MenuBar.TMenubutton",
+        )
+        self.interface_button.pack(side="left", padx=2, pady=3)
 
     def _set_language(self, language: str) -> None:
         if language not in TRANSLATIONS:
             return
         self.language = language
+        if hasattr(self, "language_choice"):
+            self.language_choice.set(language)
         self._apply_language()
 
     def _set_theme(self, theme: str) -> None:
         if theme not in ("light", "dark"):
             return
         self.theme = theme
+        if hasattr(self, "theme_choice"):
+            self.theme_choice.set(theme)
         self._apply_theme()
 
     def _apply_windows_titlebar_theme(self) -> None:
@@ -244,6 +278,19 @@ class NetScanPyApp(tk.Tk):
 
         style.configure(".", background=panel, foreground=fg)
         style.configure("TFrame", background=panel)
+        style.configure("MenuBar.TFrame", background=panel)
+        style.configure(
+            "MenuBar.TMenubutton",
+            background=panel,
+            foreground=fg,
+            padding=(10, 5),
+            relief="flat",
+        )
+        style.map(
+            "MenuBar.TMenubutton",
+            background=[("active", selected), ("pressed", selected)],
+            foreground=[("active", fg), ("pressed", fg)],
+        )
         style.configure("TLabel", background=panel, foreground=fg)
         style.configure("TLabelframe", background=panel, foreground=fg)
         style.configure("TLabelframe.Label", background=panel, foreground=fg)
@@ -281,7 +328,6 @@ class NetScanPyApp(tk.Tk):
         active_bg = "#3a3d41" if self.theme == "dark" else "#e5e5e5"
 
         for menu in (
-            getattr(self, "menu_bar", None),
             getattr(self, "language_menu", None),
             getattr(self, "interface_menu", None),
             getattr(self, "context_menu", None),
@@ -319,8 +365,9 @@ class NetScanPyApp(tk.Tk):
             for index, label in zip(command_indexes, menu_labels):
                 self.context_menu.entryconfigure(index, label=label)
 
-            if hasattr(self, "menu_bar"):
-                self.menu_bar.entryconfigure(1, label=self._t("interface"))
+            if hasattr(self, "language_button"):
+                self.language_button.configure(text=self._t("language"))
+                self.interface_button.configure(text=self._t("interface"))
                 self.interface_menu.entryconfigure(0, label=self._t("light"))
                 self.interface_menu.entryconfigure(1, label=self._t("dark"))
 
@@ -329,10 +376,10 @@ class NetScanPyApp(tk.Tk):
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
 
         top = ttk.Frame(self, padding=(16, 16, 16, 8))
-        top.grid(row=0, column=0, sticky="ew")
+        top.grid(row=1, column=0, sticky="ew")
         top.columnconfigure(1, weight=1)
 
         self.network_label = ttk.Label(top, text=self._t("network"))
@@ -352,7 +399,7 @@ class NetScanPyApp(tk.Tk):
         self.scan_button.grid(row=0, column=2, padx=(8, 0))
 
         table_frame = ttk.Frame(self, padding=(16, 8))
-        table_frame.grid(row=1, column=0, sticky="nsew")
+        table_frame.grid(row=2, column=0, sticky="nsew")
         table_frame.columnconfigure(0, weight=1)
         table_frame.rowconfigure(0, weight=1)
 
@@ -411,7 +458,7 @@ class NetScanPyApp(tk.Tk):
         self.tree.bind("<Shift-F10>", self._show_context_menu_keyboard)
 
         bottom = ttk.Frame(self, padding=(16, 8, 16, 16))
-        bottom.grid(row=2, column=0, sticky="ew")
+        bottom.grid(row=3, column=0, sticky="ew")
         bottom.columnconfigure(1, weight=1)
 
         self.progress = ttk.Progressbar(
