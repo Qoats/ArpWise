@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "netscanpy"
-version = "0.2.0"
+version = "0.3.0"
 description = "Simple open-source local network scanner written in Python."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,6 +19,7 @@ dependencies = [
 
 [project.scripts]
 netscanpy = "netscanpy.cli:main"
+netscanpy-gui = "netscanpy.gui:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/netscanpy"]
