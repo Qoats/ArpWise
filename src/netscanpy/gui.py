@@ -220,9 +220,6 @@ class NetScanPyApp(tk.Tk):
             hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
             enabled = ctypes.c_int(1 if self.theme == "dark" else 0)
 
-            # DWMWA_USE_IMMERSIVE_DARK_MODE.
-            # Attribute 20 is used on recent Windows 10/11 builds;
-            # attribute 19 is the fallback for older Windows 10 builds.
             result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
                 hwnd,
                 20,
@@ -237,7 +234,6 @@ class NetScanPyApp(tk.Tk):
                     ctypes.sizeof(enabled),
                 )
 
-            # Force Windows to redraw the non-client area immediately.
             swp_flags = 0x0001 | 0x0002 | 0x0004 | 0x0020
             ctypes.windll.user32.SetWindowPos(
                 hwnd,
@@ -249,20 +245,61 @@ class NetScanPyApp(tk.Tk):
                 swp_flags,
             )
 
-            # Explicitly redraw the window frame/title bar. On some
-            # Windows 10 builds the DWM dark-mode change is only visible
-            # after a resize/maximize unless the non-client frame is
-            # invalidated manually.
-            rdw_flags = 0x0001 | 0x0100 | 0x0400 | 0x0080
-            ctypes.windll.user32.RedrawWindow(
-                hwnd,
-                0,
-                0,
-                rdw_flags,
-            )
+            # Windows 10 can delay repainting the caption until the window
+            # is physically resized. Reproduce that refresh automatically
+            # with a one-pixel resize and immediately restore the geometry.
+            self.after(10, self._force_windows_frame_refresh)
+            self.after(80, self._reapply_windows_titlebar_theme)
+        except Exception:
+            pass
+
+    def _reapply_windows_titlebar_theme(self) -> None:
+        if platform.system() != "Windows":
+            return
+
+        try:
+            import ctypes
 
             self.update_idletasks()
+            hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
+            enabled = ctypes.c_int(1 if self.theme == "dark" else 0)
+
+            result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd,
+                20,
+                ctypes.byref(enabled),
+                ctypes.sizeof(enabled),
+            )
+            if result != 0:
+                ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd,
+                    19,
+                    ctypes.byref(enabled),
+                    ctypes.sizeof(enabled),
+                )
         except Exception:
+            pass
+
+    def _force_windows_frame_refresh(self) -> None:
+        if platform.system() != "Windows":
+            return
+
+        try:
+            self.update_idletasks()
+
+            width = self.winfo_width()
+            height = self.winfo_height()
+            x = self.winfo_x()
+            y = self.winfo_y()
+
+            if width <= 1 or height <= 1:
+                return
+
+            self.geometry(f"{width + 1}x{height}+{x}+{y}")
+            self.update_idletasks()
+            self.geometry(f"{width}x{height}+{x}+{y}")
+            self.update_idletasks()
+        except tk.TclError:
             pass
 
     def _apply_theme(self) -> None:
