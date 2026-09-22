@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Simple open-source local network scanner written in Python."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = { text = "GPL-3.0-only" }
 authors = [
   { name = "evergreen-stack" }
 ]
