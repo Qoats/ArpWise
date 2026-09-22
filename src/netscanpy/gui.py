@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import platform
+import subprocess
 import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -78,6 +80,10 @@ class NetScanPyApp(tk.Tk):
         self.tree.grid(row=0, column=0, sticky="nsew")
         scrollbar.grid(row=0, column=1, sticky="ns")
 
+        self.context_menu = tk.Menu(self, tearoff=False)
+        self.context_menu.add_command(label="Ping", command=self.ping_selected)
+        self.tree.bind("<Button-3>", self._show_context_menu)
+
         bottom = ttk.Frame(self, padding=(16, 8, 16, 16))
         bottom.grid(row=2, column=0, sticky="ew")
         bottom.columnconfigure(1, weight=1)
@@ -105,6 +111,92 @@ class NetScanPyApp(tk.Tk):
         except RuntimeError as exc:
             self.network_var.set("")
             self.status_var.set(str(exc))
+
+    def _show_context_menu(self, event: tk.Event) -> None:
+        item = self.tree.identify_row(event.y)
+        if not item:
+            return
+
+        self.tree.selection_set(item)
+        self.tree.focus(item)
+
+        try:
+            self.context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self.context_menu.grab_release()
+
+    def ping_selected(self) -> None:
+        selected = self.tree.selection()
+        if not selected:
+            return
+
+        values = self.tree.item(selected[0], "values")
+        if not values:
+            return
+
+        ip = str(values[0])
+        self.status_var.set(f"Pinging {ip}...")
+
+        worker = threading.Thread(
+            target=self._ping_worker,
+            args=(ip,),
+            daemon=True,
+        )
+        worker.start()
+
+    def _ping_worker(self, ip: str) -> None:
+        system = platform.system()
+
+        if system == "Windows":
+            command = ["ping", "-n", "4", "-w", "1000", ip]
+        else:
+            command = ["ping", "-c", "4", "-W", "1", ip]
+
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=8,
+                creationflags=(
+                    subprocess.CREATE_NO_WINDOW
+                    if system == "Windows"
+                    else 0
+                ),
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            self.after(0, self._ping_failed, ip, str(exc))
+            return
+
+        self.after(
+            0,
+            self._ping_finished,
+            ip,
+            result.returncode == 0,
+            result.stdout.strip(),
+        )
+
+    def _ping_finished(self, ip: str, success: bool, output: str) -> None:
+        if success:
+            self.status_var.set(f"{ip} responded to ping")
+            title = f"Ping {ip} - success"
+        else:
+            self.status_var.set(f"{ip} did not respond to ping")
+            title = f"Ping {ip} - no response"
+
+        messagebox.showinfo(
+            title,
+            output or "No ping output was returned.",
+        )
+
+    def _ping_failed(self, ip: str, error: str) -> None:
+        self.status_var.set(f"Ping failed for {ip}")
+        messagebox.showerror(
+            f"Ping {ip}",
+            error,
+        )
 
     def start_scan(self) -> None:
         if self.scan_button.instate(["disabled"]):
