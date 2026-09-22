@@ -5,8 +5,9 @@ import platform
 import subprocess
 import threading
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, simpledialog, ttk
 
+from .labels import get_label, load_labels, remove_label, set_label
 from .network import detect_local_network, parse_network
 from .scanner import Device, scan_network
 
@@ -22,6 +23,7 @@ class NetScanPyApp(tk.Tk):
         self.network_var = tk.StringVar()
         self.status_var = tk.StringVar(value="Ready")
         self.count_var = tk.StringVar(value="0 devices")
+        self.device_labels = load_labels()
 
         self._build_ui()
         self._load_default_network()
@@ -58,7 +60,7 @@ class NetScanPyApp(tk.Tk):
 
         self.tree = ttk.Treeview(
             table_frame,
-            columns=("ip", "mac", "hostname"),
+            columns=("ip", "mac", "hostname", "label"),
             show="headings",
             selectmode="browse",
         )
@@ -66,10 +68,12 @@ class NetScanPyApp(tk.Tk):
         self.tree.heading("ip", text="IP address")
         self.tree.heading("mac", text="MAC address")
         self.tree.heading("hostname", text="Hostname")
+        self.tree.heading("label", text="Label")
 
-        self.tree.column("ip", width=150, minwidth=120, anchor="w")
+        self.tree.column("ip", width=140, minwidth=120, anchor="w")
         self.tree.column("mac", width=190, minwidth=160, anchor="w")
-        self.tree.column("hostname", width=360, minwidth=180, anchor="w")
+        self.tree.column("hostname", width=260, minwidth=160, anchor="w")
+        self.tree.column("label", width=180, minwidth=120, anchor="w")
 
         scrollbar = ttk.Scrollbar(
             table_frame,
@@ -83,6 +87,9 @@ class NetScanPyApp(tk.Tk):
 
         self.context_menu = tk.Menu(self, tearoff=False)
         self.context_menu.add_command(label="Ping", command=self.ping_selected)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label="Set label", command=self.set_label_selected)
+        self.context_menu.add_command(label="Remove label", command=self.remove_label_selected)
         self.tree.bind("<ButtonRelease-3>", self._show_context_menu)
         self.tree.bind("<Shift-F10>", self._show_context_menu_keyboard)
 
@@ -141,6 +148,66 @@ class NetScanPyApp(tk.Tk):
         root_y = self.tree.winfo_rooty() + y + height
         self.context_menu.post(root_x, root_y)
         return "break"
+
+    def _selected_device_values(self) -> tuple[str, str, str, str] | None:
+        selected = self.tree.selection()
+        if not selected:
+            return None
+
+        values = self.tree.item(selected[0], "values")
+        if len(values) < 4:
+            return None
+
+        return tuple(str(value) for value in values[:4])  # type: ignore[return-value]
+
+    def set_label_selected(self) -> None:
+        selected_values = self._selected_device_values()
+        if selected_values is None:
+            return
+
+        _, mac, _, current_label = selected_values
+
+        label = simpledialog.askstring(
+            "NetScanPy",
+            f"Label for {mac}:",
+            initialvalue=current_label,
+            parent=self,
+        )
+
+        if label is None:
+            return
+
+        label = label.strip()
+
+        if label:
+            set_label(mac, label)
+            self.device_labels[mac.lower()] = label
+        else:
+            remove_label(mac)
+            self.device_labels.pop(mac.lower(), None)
+
+        selected = self.tree.selection()
+        if selected:
+            values = list(self.tree.item(selected[0], "values"))
+            if len(values) >= 4:
+                values[3] = label
+                self.tree.item(selected[0], values=values)
+
+    def remove_label_selected(self) -> None:
+        selected_values = self._selected_device_values()
+        if selected_values is None:
+            return
+
+        _, mac, _, _ = selected_values
+        remove_label(mac)
+        self.device_labels.pop(mac.lower(), None)
+
+        selected = self.tree.selection()
+        if selected:
+            values = list(self.tree.item(selected[0], "values"))
+            if len(values) >= 4:
+                values[3] = ""
+                self.tree.item(selected[0], values=values)
 
     def ping_selected(self) -> None:
         selected = self.tree.selection()
@@ -469,7 +536,12 @@ class NetScanPyApp(tk.Tk):
             self.tree.insert(
                 "",
                 "end",
-                values=(device.ip, device.mac, device.hostname),
+                values=(
+                    device.ip,
+                    device.mac,
+                    device.hostname,
+                    get_label(device.mac, self.device_labels),
+                ),
             )
 
         count = len(devices)
