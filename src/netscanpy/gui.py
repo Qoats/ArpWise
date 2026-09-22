@@ -174,6 +174,49 @@ class NetScanPyApp(tk.Tk):
         self.theme = theme
         self._apply_theme()
 
+    def _apply_windows_titlebar_theme(self) -> None:
+        if platform.system() != "Windows":
+            return
+
+        try:
+            import ctypes
+
+            self.update_idletasks()
+
+            hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
+            enabled = ctypes.c_int(1 if self.theme == "dark" else 0)
+
+            # DWMWA_USE_IMMERSIVE_DARK_MODE.
+            # Attribute 20 is used on recent Windows 10/11 builds;
+            # attribute 19 is the fallback for older Windows 10 builds.
+            result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd,
+                20,
+                ctypes.byref(enabled),
+                ctypes.sizeof(enabled),
+            )
+            if result != 0:
+                ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd,
+                    19,
+                    ctypes.byref(enabled),
+                    ctypes.sizeof(enabled),
+                )
+
+            # Force Windows to redraw the non-client area immediately.
+            flags = 0x0001 | 0x0002 | 0x0004 | 0x0020
+            ctypes.windll.user32.SetWindowPos(
+                hwnd,
+                0,
+                0,
+                0,
+                0,
+                0,
+                flags,
+            )
+        except Exception:
+            pass
+
     def _apply_theme(self) -> None:
         style = ttk.Style(self)
         try:
@@ -197,6 +240,7 @@ class NetScanPyApp(tk.Tk):
             selected = "#dbeafe"
 
         self.configure(bg=bg)
+        self._apply_windows_titlebar_theme()
 
         style.configure(".", background=panel, foreground=fg)
         style.configure("TFrame", background=panel)
