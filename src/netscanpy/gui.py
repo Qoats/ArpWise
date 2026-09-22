@@ -35,6 +35,7 @@ TRANSLATIONS = {
         "scan_complete": "Analyse terminée", "scan_failed": "Échec de l'analyse",
         "scanning": "Analyse de {network}...", "device": "appareil",
         "copied": "{what} copié", "opening": "Ouverture de http://{ip}",
+        "interface": "Interface", "light": "Clair", "dark": "Sombre",
     },
     "en": {
         "network": "Network", "scan": "Scan", "ip": "IP address",
@@ -55,6 +56,7 @@ TRANSLATIONS = {
         "scan_complete": "Scan complete", "scan_failed": "Scan failed",
         "scanning": "Scanning {network}...", "device": "device",
         "copied": "{what} copied", "opening": "Opening http://{ip}",
+        "interface": "Interface", "light": "Light", "dark": "Dark",
     },
     "de": {
         "network": "Netzwerk", "scan": "Scannen", "ip": "IP-Adresse",
@@ -75,6 +77,7 @@ TRANSLATIONS = {
         "scan_complete": "Scan abgeschlossen", "scan_failed": "Scan fehlgeschlagen",
         "scanning": "Scanne {network}...", "device": "Gerät",
         "copied": "{what} kopiert", "opening": "Öffne http://{ip}",
+        "interface": "Darstellung", "light": "Hell", "dark": "Dunkel",
     },
     "zh": {
         "network": "网络", "scan": "扫描", "ip": "IP 地址",
@@ -95,6 +98,7 @@ TRANSLATIONS = {
         "scan_complete": "扫描完成", "scan_failed": "扫描失败",
         "scanning": "正在扫描 {network}...", "device": "设备",
         "copied": "已复制{what}", "opening": "正在打开 http://{ip}",
+        "interface": "界面", "light": "浅色", "dark": "深色",
     },
 }
 
@@ -108,6 +112,7 @@ class NetScanPyApp(tk.Tk):
         self.minsize(700, 420)
 
         self.language = "fr"
+        self.theme = "light"
         self.network_var = tk.StringVar()
         self.status_var = tk.StringVar(value=self._t("ready"))
         self.count_var = tk.StringVar(value="0 devices")
@@ -116,6 +121,7 @@ class NetScanPyApp(tk.Tk):
         self._build_ui()
         self._build_menu()
         self._apply_language()
+        self._apply_theme()
         self._load_default_network()
 
     def _t(self, key: str, **kwargs: object) -> str:
@@ -125,6 +131,7 @@ class NetScanPyApp(tk.Tk):
     def _build_menu(self) -> None:
         self.menu_bar = tk.Menu(self)
         self.language_menu = tk.Menu(self.menu_bar, tearoff=False)
+        self.interface_menu = tk.Menu(self.menu_bar, tearoff=False)
 
         self.language_menu.add_radiobutton(
             label="Français", command=lambda: self._set_language("fr")
@@ -139,7 +146,20 @@ class NetScanPyApp(tk.Tk):
             label="中文", command=lambda: self._set_language("zh")
         )
 
+        self.interface_menu.add_radiobutton(
+            label=self._t("light"),
+            command=lambda: self._set_theme("light"),
+        )
+        self.interface_menu.add_radiobutton(
+            label=self._t("dark"),
+            command=lambda: self._set_theme("dark"),
+        )
+
         self.menu_bar.add_cascade(label="Language", menu=self.language_menu)
+        self.menu_bar.add_cascade(
+            label=self._t("interface"),
+            menu=self.interface_menu,
+        )
         self.config(menu=self.menu_bar)
 
     def _set_language(self, language: str) -> None:
@@ -147,6 +167,88 @@ class NetScanPyApp(tk.Tk):
             return
         self.language = language
         self._apply_language()
+
+    def _set_theme(self, theme: str) -> None:
+        if theme not in ("light", "dark"):
+            return
+        self.theme = theme
+        self._apply_theme()
+
+    def _apply_theme(self) -> None:
+        style = ttk.Style(self)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+
+        if self.theme == "dark":
+            bg = "#1e1e1e"
+            panel = "#252526"
+            field = "#2d2d30"
+            fg = "#f3f3f3"
+            muted = "#cccccc"
+            selected = "#3a3d41"
+        else:
+            bg = "#f3f3f3"
+            panel = "#f7f7f7"
+            field = "#ffffff"
+            fg = "#202020"
+            muted = "#404040"
+            selected = "#dbeafe"
+
+        self.configure(bg=bg)
+
+        style.configure(".", background=panel, foreground=fg)
+        style.configure("TFrame", background=panel)
+        style.configure("TLabel", background=panel, foreground=fg)
+        style.configure("TLabelframe", background=panel, foreground=fg)
+        style.configure("TLabelframe.Label", background=panel, foreground=fg)
+        style.configure("TButton", background=field, foreground=fg)
+        style.map(
+            "TButton",
+            background=[("active", selected), ("pressed", selected)],
+            foreground=[("disabled", muted)],
+        )
+        style.configure(
+            "TEntry",
+            fieldbackground=field,
+            foreground=fg,
+            insertcolor=fg,
+        )
+        style.configure(
+            "Treeview",
+            background=field,
+            fieldbackground=field,
+            foreground=fg,
+        )
+        style.configure(
+            "Treeview.Heading",
+            background=panel,
+            foreground=fg,
+        )
+        style.map(
+            "Treeview",
+            background=[("selected", selected)],
+            foreground=[("selected", fg)],
+        )
+
+        menu_bg = "#252526" if self.theme == "dark" else "#f5f5f5"
+        menu_fg = "#f3f3f3" if self.theme == "dark" else "#202020"
+        active_bg = "#3a3d41" if self.theme == "dark" else "#e5e5e5"
+
+        for menu in (
+            getattr(self, "menu_bar", None),
+            getattr(self, "language_menu", None),
+            getattr(self, "interface_menu", None),
+            getattr(self, "context_menu", None),
+        ):
+            if isinstance(menu, tk.Menu):
+                menu.configure(
+                    background=menu_bg,
+                    foreground=menu_fg,
+                    activebackground=active_bg,
+                    activeforeground=menu_fg,
+                )
 
     def _apply_language(self) -> None:
         if hasattr(self, "network_label"):
@@ -172,6 +274,11 @@ class NetScanPyApp(tk.Tk):
             command_indexes = (0, 1, 2, 4, 6, 7, 8, 10, 12, 13)
             for index, label in zip(command_indexes, menu_labels):
                 self.context_menu.entryconfigure(index, label=label)
+
+            if hasattr(self, "menu_bar"):
+                self.menu_bar.entryconfigure(1, label=self._t("interface"))
+                self.interface_menu.entryconfigure(0, label=self._t("light"))
+                self.interface_menu.entryconfigure(1, label=self._t("dark"))
 
         if self.status_var.get() in ("Ready", "Prêt", "Bereit", "就绪"):
             self.status_var.set(self._t("ready"))
@@ -372,7 +479,7 @@ class NetScanPyApp(tk.Tk):
 
         ip, mac, hostname, label = values
         window = tk.Toplevel(self)
-        window.title(f"{self._t("device_details")} - {ip}")
+        window.title(f"{self._t('device_details')} - {ip}")
         window.geometry("460x280")
         window.resizable(False, False)
         window.transient(self)
@@ -576,7 +683,7 @@ class NetScanPyApp(tk.Tk):
         }
 
         window = tk.Toplevel(self)
-        window.title(f"{self._t("common_ports")} - {ip}")
+        window.title(f"{self._t('common_ports')} - {ip}")
         window.geometry("500x430")
         window.transient(self)
 
@@ -812,7 +919,7 @@ class NetScanPyApp(tk.Tk):
 
         title_label = ttk.Label(
             container,
-            text=f"Ping {ip} - {self._t("in_progress")}",
+            text=f"Ping {ip} - {self._t('in_progress')}",
             font=("Segoe UI", 11, "bold"),
         )
         title_label.pack(anchor="w")
@@ -870,13 +977,13 @@ class NetScanPyApp(tk.Tk):
 
         ttk.Button(
             button_frame,
-            text="Copy",
+            text=self._t("copy"),
             command=copy_output,
         ).pack(side="left")
 
         ttk.Button(
             button_frame,
-            text="Close",
+            text=self._t("close"),
             command=window.destroy,
         ).pack(side="right")
 
@@ -931,11 +1038,11 @@ class NetScanPyApp(tk.Tk):
         if success:
             self.status_var.set(f"{ip} responded to ping")
             if isinstance(title_label, ttk.Label):
-                title_label.configure(text=f"Ping {ip} - {self._t("success")}")
+                title_label.configure(text=f"Ping {ip} - {self._t('success')}")
         else:
             self.status_var.set(f"{ip} did not respond to ping")
             if isinstance(title_label, ttk.Label):
-                title_label.configure(text=f"Ping {ip} - {self._t("no_response")}")
+                title_label.configure(text=f"Ping {ip} - {self._t('no_response')}")
 
         summary = self._extract_ping_summary(output)
         if isinstance(summary_label, ttk.Label):
@@ -963,7 +1070,7 @@ class NetScanPyApp(tk.Tk):
         summary_label = ping_window["summary_label"]
 
         if isinstance(title_label, ttk.Label):
-            title_label.configure(text=f"Ping {ip} - {self._t("error")}")
+            title_label.configure(text=f"Ping {ip} - {self._t('error')}")
         if isinstance(summary_label, ttk.Label):
             summary_label.configure(text=error)
 
@@ -986,7 +1093,7 @@ class NetScanPyApp(tk.Tk):
 
         self._clear_results()
         self.status_var.set(self._t("scanning", network=network))
-        self.count_var.set(f"0 {self._t("devices")}")
+        self.count_var.set(f"0 {self._t('devices')}")
         self.scan_button.state(["disabled"])
         self.network_entry.state(["disabled"])
         self.progress.start(10)
@@ -1022,7 +1129,7 @@ class NetScanPyApp(tk.Tk):
 
         count = len(devices)
         self.count_var.set(
-            f"{count} {self._t("device")}" if count == 1 else f"{count} {self._t("devices")}"
+            f"{count} {self._t('device')}" if count == 1 else f"{count} {self._t('devices')}"
         )
         self.status_var.set(self._t("scan_complete"))
         self._set_idle_state()
