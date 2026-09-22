@@ -372,7 +372,7 @@ class NetScanPyApp(tk.Tk):
 
         ip, mac, hostname, label = values
         window = tk.Toplevel(self)
-        window.title(f"{self._t(\"device_details\")} - {ip}")
+        window.title(f"{self._t("device_details")} - {ip}")
         window.geometry("460x280")
         window.resizable(False, False)
         window.transient(self)
@@ -576,7 +576,7 @@ class NetScanPyApp(tk.Tk):
         }
 
         window = tk.Toplevel(self)
-        window.title(f"{self._t(\"common_ports\")} - {ip}")
+        window.title(f"{self._t("common_ports")} - {ip}")
         window.geometry("500x430")
         window.transient(self)
 
@@ -812,7 +812,7 @@ class NetScanPyApp(tk.Tk):
 
         title_label = ttk.Label(
             container,
-            text=f"Ping {ip} - {self._t(\"in_progress\")}",
+            text=f"Ping {ip} - {self._t("in_progress")}",
             font=("Segoe UI", 11, "bold"),
         )
         title_label.pack(anchor="w")
@@ -931,11 +931,11 @@ class NetScanPyApp(tk.Tk):
         if success:
             self.status_var.set(f"{ip} responded to ping")
             if isinstance(title_label, ttk.Label):
-                title_label.configure(text=f"Ping {ip} - {self._t(\"success\")}")
+                title_label.configure(text=f"Ping {ip} - {self._t("success")}")
         else:
             self.status_var.set(f"{ip} did not respond to ping")
             if isinstance(title_label, ttk.Label):
-                title_label.configure(text=f"Ping {ip} - {self._t(\"no_response\")}")
+                title_label.configure(text=f"Ping {ip} - {self._t("no_response")}")
 
         summary = self._extract_ping_summary(output)
         if isinstance(summary_label, ttk.Label):
@@ -963,7 +963,7 @@ class NetScanPyApp(tk.Tk):
         summary_label = ping_window["summary_label"]
 
         if isinstance(title_label, ttk.Label):
-            title_label.configure(text=f"Ping {ip} - {self._t(\"error\")}")
+            title_label.configure(text=f"Ping {ip} - {self._t("error")}")
         if isinstance(summary_label, ttk.Label):
             summary_label.configure(text=error)
 
@@ -986,7 +986,7 @@ class NetScanPyApp(tk.Tk):
 
         self._clear_results()
         self.status_var.set(self._t("scanning", network=network))
-        self.count_var.set(f"0 {self._t(\"devices\")}")
+        self.count_var.set(f"0 {self._t("devices")}")
         self.scan_button.state(["disabled"])
         self.network_entry.state(["disabled"])
         self.progress.start(10)
@@ -1022,7 +1022,7 @@ class NetScanPyApp(tk.Tk):
 
         count = len(devices)
         self.count_var.set(
-            f"{count} {self._t(\"device\")}" if count == 1 else f"{count} {self._t(\"devices\")}"
+            f"{count} {self._t("device")}" if count == 1 else f"{count} {self._t("devices")}"
         )
         self.status_var.set(self._t("scan_complete"))
         self._set_idle_state()
