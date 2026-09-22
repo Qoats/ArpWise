@@ -82,7 +82,8 @@ class NetScanPyApp(tk.Tk):
 
         self.context_menu = tk.Menu(self, tearoff=False)
         self.context_menu.add_command(label="Ping", command=self.ping_selected)
-        self.tree.bind("<Button-3>", self._show_context_menu)
+        self.tree.bind("<ButtonRelease-3>", self._show_context_menu)
+        self.tree.bind("<Shift-F10>", self._show_context_menu_keyboard)
 
         bottom = ttk.Frame(self, padding=(16, 8, 16, 16))
         bottom.grid(row=2, column=0, sticky="ew")
@@ -112,18 +113,33 @@ class NetScanPyApp(tk.Tk):
             self.network_var.set("")
             self.status_var.set(str(exc))
 
-    def _show_context_menu(self, event: tk.Event) -> None:
+    def _show_context_menu(self, event: tk.Event) -> str:
         item = self.tree.identify_row(event.y)
         if not item:
-            return
+            return "break"
 
         self.tree.selection_set(item)
         self.tree.focus(item)
+        self.context_menu.post(event.x_root, event.y_root)
+        return "break"
 
-        try:
-            self.context_menu.tk_popup(event.x_root, event.y_root)
-        finally:
-            self.context_menu.grab_release()
+    def _show_context_menu_keyboard(self, event: tk.Event) -> str:
+        selected = self.tree.selection()
+        if not selected:
+            children = self.tree.get_children()
+            if not children:
+                return "break"
+            item = children[0]
+            self.tree.selection_set(item)
+            self.tree.focus(item)
+        else:
+            item = selected[0]
+
+        x, y, width, height = self.tree.bbox(item)
+        root_x = self.tree.winfo_rootx() + x + min(width // 2, 80)
+        root_y = self.tree.winfo_rooty() + y + height
+        self.context_menu.post(root_x, root_y)
+        return "break"
 
     def ping_selected(self) -> None:
         selected = self.tree.selection()
