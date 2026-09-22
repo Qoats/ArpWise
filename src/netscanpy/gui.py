@@ -238,7 +238,7 @@ class NetScanPyApp(tk.Tk):
                 )
 
             # Force Windows to redraw the non-client area immediately.
-            flags = 0x0001 | 0x0002 | 0x0004 | 0x0020
+            swp_flags = 0x0001 | 0x0002 | 0x0004 | 0x0020
             ctypes.windll.user32.SetWindowPos(
                 hwnd,
                 0,
@@ -246,8 +246,22 @@ class NetScanPyApp(tk.Tk):
                 0,
                 0,
                 0,
-                flags,
+                swp_flags,
             )
+
+            # Explicitly redraw the window frame/title bar. On some
+            # Windows 10 builds the DWM dark-mode change is only visible
+            # after a resize/maximize unless the non-client frame is
+            # invalidated manually.
+            rdw_flags = 0x0001 | 0x0100 | 0x0400 | 0x0080
+            ctypes.windll.user32.RedrawWindow(
+                hwnd,
+                0,
+                0,
+                rdw_flags,
+            )
+
+            self.update_idletasks()
         except Exception:
             pass
 
