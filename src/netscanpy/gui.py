@@ -134,7 +134,7 @@ class NetScanPyApp(tk.Tk):
 
     def _scan_worker(self, network: str) -> None:
         try:
-            devices = scan_network(network)
+            devices = scan_network(network, timeout=1.0)
         except Exception as exc:
             self.after(0, self._scan_failed, str(exc))
             return
