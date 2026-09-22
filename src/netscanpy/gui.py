@@ -390,6 +390,22 @@ class NetScanPyApp(tk.Tk):
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _insert_port_result(
+        self,
+        tree: ttk.Treeview,
+        port: int,
+        service: str,
+        status: str,
+    ) -> None:
+        if not tree.winfo_exists():
+            return
+
+        tree.insert(
+            "",
+            "end",
+            values=(port, service, status),
+        )
+
     def scan_common_ports_selected(self) -> None:
         values = self._selected_device_values()
         if values is None:
@@ -457,12 +473,14 @@ class NetScanPyApp(tk.Tk):
                 if is_open:
                     open_count += 1
 
+                status_text = "Open" if is_open else "Closed"
                 self.after(
                     0,
-                    tree.insert,
-                    "",
-                    "end",
-                    {"values": (port, service, "Open" if is_open else "Closed")},
+                    self._insert_port_result,
+                    tree,
+                    port,
+                    service,
+                    status_text,
                 )
 
             self.after(
