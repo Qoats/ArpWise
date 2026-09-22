@@ -267,12 +267,12 @@ class NetScanPyApp(tk.Tk):
         container = ttk.Frame(window, padding=12)
         container.pack(fill="both", expand=True)
 
-        title_var = tk.StringVar(value=f"Ping {ip} - in progress...")
-        ttk.Label(
+        title_label = ttk.Label(
             container,
-            textvariable=title_var,
+            text=f"Ping {ip} - in progress...",
             font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w")
+        )
+        title_label.pack(anchor="w")
 
         summary_frame = ttk.LabelFrame(
             container,
@@ -281,12 +281,12 @@ class NetScanPyApp(tk.Tk):
         )
         summary_frame.pack(fill="x", pady=(10, 10))
 
-        summary_var = tk.StringVar(value="Waiting for ping results...")
-        ttk.Label(
+        summary_label = ttk.Label(
             summary_frame,
-            textvariable=summary_var,
+            text="Waiting for ping results...",
             justify="left",
-        ).pack(anchor="w")
+        )
+        summary_label.pack(anchor="w")
 
         terminal_frame = ttk.LabelFrame(
             container,
@@ -341,8 +341,8 @@ class NetScanPyApp(tk.Tk):
 
         return {
             "window": window,
-            "title_var": title_var,
-            "summary_var": summary_var,
+            "title_label": title_label,
+            "summary_label": summary_label,
             "text_widget": text_widget,
         }
 
@@ -364,6 +364,13 @@ class NetScanPyApp(tk.Tk):
         text_widget.see("end")
         text_widget.configure(state="disabled")
 
+        summary_label = ping_window.get("summary_label")
+        if isinstance(summary_label, ttk.Label):
+            current_output = text_widget.get("1.0", "end-1c")
+            summary = self._extract_ping_summary(current_output)
+            if summary:
+                summary_label.configure(text="\n".join(summary[-4:]))
+
     def _ping_finished(
         self,
         ip: str,
@@ -375,24 +382,26 @@ class NetScanPyApp(tk.Tk):
         if not isinstance(window, tk.Toplevel) or not window.winfo_exists():
             return
 
-        title_var = ping_window["title_var"]
-        summary_var = ping_window["summary_var"]
+        title_label = ping_window["title_label"]
+        summary_label = ping_window["summary_label"]
 
         if success:
             self.status_var.set(f"{ip} responded to ping")
-            if isinstance(title_var, tk.StringVar):
-                title_var.set(f"Ping {ip} - success")
+            if isinstance(title_label, ttk.Label):
+                title_label.configure(text=f"Ping {ip} - success")
         else:
             self.status_var.set(f"{ip} did not respond to ping")
-            if isinstance(title_var, tk.StringVar):
-                title_var.set(f"Ping {ip} - no response")
+            if isinstance(title_label, ttk.Label):
+                title_label.configure(text=f"Ping {ip} - no response")
 
         summary = self._extract_ping_summary(output)
-        if isinstance(summary_var, tk.StringVar):
-            summary_var.set(
-                "\n".join(summary)
-                if summary
-                else "No summary information was returned."
+        if isinstance(summary_label, ttk.Label):
+            summary_label.configure(
+                text=(
+                    "\n".join(summary)
+                    if summary
+                    else "No summary information was returned."
+                )
             )
 
     def _ping_failed_window(
@@ -407,13 +416,13 @@ class NetScanPyApp(tk.Tk):
         if not isinstance(window, tk.Toplevel) or not window.winfo_exists():
             return
 
-        title_var = ping_window["title_var"]
-        summary_var = ping_window["summary_var"]
+        title_label = ping_window["title_label"]
+        summary_label = ping_window["summary_label"]
 
-        if isinstance(title_var, tk.StringVar):
-            title_var.set(f"Ping {ip} - error")
-        if isinstance(summary_var, tk.StringVar):
-            summary_var.set(error)
+        if isinstance(title_label, ttk.Label):
+            title_label.configure(text=f"Ping {ip} - error")
+        if isinstance(summary_label, ttk.Label):
+            summary_label.configure(text=error)
 
         self._append_ping_output(
             ping_window,
