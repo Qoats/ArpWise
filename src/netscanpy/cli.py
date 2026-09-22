@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
 
 from rich.console import Console
 
@@ -27,8 +26,8 @@ def build_parser() -> argparse.ArgumentParser:
         "-t",
         "--timeout",
         type=float,
-        default=1.5,
-        help="ARP response timeout in seconds (default: 1.5).",
+        default=1.0,
+        help="Neighbor discovery wait time in seconds (default: 1.0).",
     )
     return parser
 
@@ -47,11 +46,6 @@ def main() -> None:
             else detect_local_network()
         )
         devices = scan_network(str(network), timeout=args.timeout)
-    except PermissionError:
-        console.print(
-            "[red]Permission denied.[/red] Run NetScanPy with administrator/root privileges."
-        )
-        raise SystemExit(1)
     except (RuntimeError, ValueError, OSError) as exc:
         console.print(f"[red]Error:[/red] {exc}")
         raise SystemExit(1)
