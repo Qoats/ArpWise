@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import locale
 import platform
 import subprocess
 import threading
@@ -153,45 +154,83 @@ class NetScanPyApp(tk.Tk):
         ip = str(values[0])
         self.status_var.set(f"Pinging {ip}...")
 
+        ping_window = self._create_ping_window(ip)
+
         worker = threading.Thread(
             target=self._ping_worker,
-            args=(ip,),
+            args=(ip, ping_window),
             daemon=True,
         )
         worker.start()
 
-    def _ping_worker(self, ip: str) -> None:
+    def _windows_oem_encoding(self) -> str:
+        try:
+            import ctypes
+
+            code_page = ctypes.windll.kernel32.GetOEMCP()
+            return f"cp{code_page}"
+        except Exception:
+            return locale.getpreferredencoding(False) or "utf-8"
+
+    def _ping_worker(self, ip: str, ping_window: dict[str, object]) -> None:
         system = platform.system()
 
         if system == "Windows":
             command = ["ping", "-n", "4", "-w", "1000", ip]
+            encoding = self._windows_oem_encoding()
+            creationflags = subprocess.CREATE_NO_WINDOW
         else:
             command = ["ping", "-c", "4", "-W", "1", ip]
+            encoding = locale.getpreferredencoding(False) or "utf-8"
+            creationflags = 0
+
+        output_parts: list[str] = []
 
         try:
-            result = subprocess.run(
+            process = subprocess.Popen(
                 command,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=8,
-                creationflags=(
-                    subprocess.CREATE_NO_WINDOW
-                    if system == "Windows"
-                    else 0
-                ),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,
+                creationflags=creationflags,
             )
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            self.after(0, self._ping_failed, ip, str(exc))
+
+            if process.stdout is None:
+                raise RuntimeError("Unable to read ping output.")
+
+            while True:
+                raw_line = process.stdout.readline()
+                if not raw_line:
+                    break
+
+                line = raw_line.decode(encoding, errors="replace")
+                output_parts.append(line)
+                self.after(
+                    0,
+                    self._append_ping_output,
+                    ping_window,
+                    line,
+                )
+
+            return_code = process.wait(timeout=2)
+        except (OSError, subprocess.TimeoutExpired, RuntimeError) as exc:
+            self.after(
+                0,
+                self._ping_failed_window,
+                ip,
+                ping_window,
+                str(exc),
+            )
             return
 
+        output = "".join(output_parts).strip()
         self.after(
             0,
             self._ping_finished,
             ip,
-            result.returncode == 0,
-            result.stdout.strip(),
+            ping_window,
+            return_code == 0,
+            output,
         )
 
     def _extract_ping_summary(self, output: str) -> list[str]:
@@ -216,9 +255,9 @@ class NetScanPyApp(tk.Tk):
             if any(keyword in line for keyword in keywords):
                 selected.append(line)
 
-        return selected[:12]
+        return selected[-8:]
 
-    def _show_ping_window(self, ip: str, success: bool, output: str) -> None:
+    def _create_ping_window(self, ip: str) -> dict[str, object]:
         window = tk.Toplevel(self)
         window.title(f"Ping {ip}")
         window.geometry("760x500")
@@ -228,28 +267,26 @@ class NetScanPyApp(tk.Tk):
         container = ttk.Frame(window, padding=12)
         container.pack(fill="both", expand=True)
 
-        title_text = (
-            f"Ping {ip} - success"
-            if success
-            else f"Ping {ip} - no response"
-        )
+        title_var = tk.StringVar(value=f"Ping {ip} - in progress...")
         ttk.Label(
             container,
-            text=title_text,
+            textvariable=title_var,
             font=("Segoe UI", 11, "bold"),
         ).pack(anchor="w")
 
-        summary = self._extract_ping_summary(output)
-        if summary:
-            summary_frame = ttk.LabelFrame(
-                container,
-                text="Summary",
-                padding=10,
-            )
-            summary_frame.pack(fill="x", pady=(10, 10))
+        summary_frame = ttk.LabelFrame(
+            container,
+            text="Summary",
+            padding=10,
+        )
+        summary_frame.pack(fill="x", pady=(10, 10))
 
-            for line in summary:
-                ttk.Label(summary_frame, text=line).pack(anchor="w")
+        summary_var = tk.StringVar(value="Waiting for ping results...")
+        ttk.Label(
+            summary_frame,
+            textvariable=summary_var,
+            justify="left",
+        ).pack(anchor="w")
 
         terminal_frame = ttk.LabelFrame(
             container,
@@ -276,17 +313,15 @@ class NetScanPyApp(tk.Tk):
         )
         scrollbar.pack(side="right", fill="y")
         text_widget.configure(yscrollcommand=scrollbar.set)
-
-        text_widget.insert(
-            "1.0",
-            output or "No ping output was returned.",
-        )
         text_widget.configure(state="disabled")
 
         button_frame = ttk.Frame(container)
         button_frame.pack(fill="x", pady=(10, 0))
 
         def copy_output() -> None:
+            text_widget.configure(state="normal")
+            output = text_widget.get("1.0", "end-1c")
+            text_widget.configure(state="disabled")
             window.clipboard_clear()
             window.clipboard_append(output)
 
@@ -304,19 +339,85 @@ class NetScanPyApp(tk.Tk):
 
         window.focus_set()
 
-    def _ping_finished(self, ip: str, success: bool, output: str) -> None:
+        return {
+            "window": window,
+            "title_var": title_var,
+            "summary_var": summary_var,
+            "text_widget": text_widget,
+        }
+
+    def _append_ping_output(
+        self,
+        ping_window: dict[str, object],
+        text: str,
+    ) -> None:
+        window = ping_window["window"]
+        if not isinstance(window, tk.Toplevel) or not window.winfo_exists():
+            return
+
+        text_widget = ping_window["text_widget"]
+        if not isinstance(text_widget, tk.Text):
+            return
+
+        text_widget.configure(state="normal")
+        text_widget.insert("end", text)
+        text_widget.see("end")
+        text_widget.configure(state="disabled")
+
+    def _ping_finished(
+        self,
+        ip: str,
+        ping_window: dict[str, object],
+        success: bool,
+        output: str,
+    ) -> None:
+        window = ping_window["window"]
+        if not isinstance(window, tk.Toplevel) or not window.winfo_exists():
+            return
+
+        title_var = ping_window["title_var"]
+        summary_var = ping_window["summary_var"]
+
         if success:
             self.status_var.set(f"{ip} responded to ping")
+            if isinstance(title_var, tk.StringVar):
+                title_var.set(f"Ping {ip} - success")
         else:
             self.status_var.set(f"{ip} did not respond to ping")
+            if isinstance(title_var, tk.StringVar):
+                title_var.set(f"Ping {ip} - no response")
 
-        self._show_ping_window(ip, success, output)
+        summary = self._extract_ping_summary(output)
+        if isinstance(summary_var, tk.StringVar):
+            summary_var.set(
+                "\n".join(summary)
+                if summary
+                else "No summary information was returned."
+            )
 
-    def _ping_failed(self, ip: str, error: str) -> None:
+    def _ping_failed_window(
+        self,
+        ip: str,
+        ping_window: dict[str, object],
+        error: str,
+    ) -> None:
         self.status_var.set(f"Ping failed for {ip}")
-        messagebox.showerror(
-            f"Ping {ip}",
-            error,
+
+        window = ping_window["window"]
+        if not isinstance(window, tk.Toplevel) or not window.winfo_exists():
+            return
+
+        title_var = ping_window["title_var"]
+        summary_var = ping_window["summary_var"]
+
+        if isinstance(title_var, tk.StringVar):
+            title_var.set(f"Ping {ip} - error")
+        if isinstance(summary_var, tk.StringVar):
+            summary_var.set(error)
+
+        self._append_ping_output(
+            ping_window,
+            f"\nError: {error}\n",
         )
 
     def start_scan(self) -> None:
