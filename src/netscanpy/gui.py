@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import locale
 import platform
+import socket
 import subprocess
 import threading
 import tkinter as tk
+import webbrowser
 from tkinter import messagebox, simpledialog, ttk
 
 from .labels import get_label, load_labels, remove_label, set_label
@@ -87,6 +89,25 @@ class NetScanPyApp(tk.Tk):
 
         self.context_menu = tk.Menu(self, tearoff=False)
         self.context_menu.add_command(label="Ping", command=self.ping_selected)
+        self.context_menu.add_command(label="Traceroute", command=self.traceroute_selected)
+        self.context_menu.add_command(
+            label="Scan common ports",
+            command=self.scan_common_ports_selected,
+        )
+        self.context_menu.add_separator()
+        self.context_menu.add_command(
+            label="Open in browser",
+            command=self.open_in_browser_selected,
+        )
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label="Copy IP", command=self.copy_ip_selected)
+        self.context_menu.add_command(label="Copy MAC", command=self.copy_mac_selected)
+        self.context_menu.add_command(
+            label="Copy hostname",
+            command=self.copy_hostname_selected,
+        )
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label="Show details", command=self.show_details_selected)
         self.context_menu.add_separator()
         self.context_menu.add_command(label="Set label", command=self.set_label_selected)
         self.context_menu.add_command(label="Remove label", command=self.remove_label_selected)
@@ -159,6 +180,298 @@ class NetScanPyApp(tk.Tk):
             return None
 
         return tuple(str(value) for value in values[:4])  # type: ignore[return-value]
+
+    def _copy_to_clipboard(self, value: str, description: str) -> None:
+        if not value:
+            return
+        self.clipboard_clear()
+        self.clipboard_append(value)
+        self.status_var.set(f"{description} copied")
+
+    def copy_ip_selected(self) -> None:
+        values = self._selected_device_values()
+        if values is None:
+            return
+        ip, _, _, _ = values
+        self._copy_to_clipboard(ip, "IP address")
+
+    def copy_mac_selected(self) -> None:
+        values = self._selected_device_values()
+        if values is None:
+            return
+        _, mac, _, _ = values
+        self._copy_to_clipboard(mac, "MAC address")
+
+    def copy_hostname_selected(self) -> None:
+        values = self._selected_device_values()
+        if values is None:
+            return
+        _, _, hostname, _ = values
+        if not hostname or hostname == "Unknown":
+            messagebox.showinfo("NetScanPy", "No hostname is available for this device.")
+            return
+        self._copy_to_clipboard(hostname, "Hostname")
+
+    def open_in_browser_selected(self) -> None:
+        values = self._selected_device_values()
+        if values is None:
+            return
+        ip, _, _, _ = values
+        webbrowser.open(f"http://{ip}")
+        self.status_var.set(f"Opening http://{ip}")
+
+    def show_details_selected(self) -> None:
+        values = self._selected_device_values()
+        if values is None:
+            return
+
+        ip, mac, hostname, label = values
+        window = tk.Toplevel(self)
+        window.title(f"Device details - {ip}")
+        window.geometry("460x280")
+        window.resizable(False, False)
+        window.transient(self)
+
+        frame = ttk.Frame(window, padding=18)
+        frame.pack(fill="both", expand=True)
+
+        details = (
+            ("IP address", ip),
+            ("MAC address", mac),
+            ("Hostname", hostname or "Unknown"),
+            ("Label", label or "None"),
+        )
+
+        for row, (name, value) in enumerate(details):
+            ttk.Label(frame, text=f"{name}:", font=("Segoe UI", 9, "bold")).grid(
+                row=row,
+                column=0,
+                sticky="w",
+                pady=7,
+                padx=(0, 12),
+            )
+            ttk.Label(frame, text=value).grid(
+                row=row,
+                column=1,
+                sticky="w",
+                pady=7,
+            )
+
+        ttk.Button(frame, text="Close", command=window.destroy).grid(
+            row=len(details),
+            column=1,
+            sticky="e",
+            pady=(18, 0),
+        )
+
+    def traceroute_selected(self) -> None:
+        values = self._selected_device_values()
+        if values is None:
+            return
+        ip, _, _, _ = values
+
+        system = platform.system()
+        if system == "Windows":
+            command = ["tracert", "-d", "-w", "1000", ip]
+            encoding = self._windows_oem_encoding()
+            creationflags = subprocess.CREATE_NO_WINDOW
+        else:
+            command = ["traceroute", "-n", "-w", "1", ip]
+            encoding = locale.getpreferredencoding(False) or "utf-8"
+            creationflags = 0
+
+        self._start_live_command(
+            title=f"Traceroute {ip}",
+            command=command,
+            encoding=encoding,
+            creationflags=creationflags,
+        )
+
+    def _start_live_command(
+        self,
+        title: str,
+        command: list[str],
+        encoding: str,
+        creationflags: int = 0,
+    ) -> None:
+        window = tk.Toplevel(self)
+        window.title(title)
+        window.geometry("760x500")
+        window.minsize(620, 360)
+        window.transient(self)
+
+        container = ttk.Frame(window, padding=12)
+        container.pack(fill="both", expand=True)
+
+        title_label = ttk.Label(
+            container,
+            text=f"{title} - in progress...",
+            font=("Segoe UI", 11, "bold"),
+        )
+        title_label.pack(anchor="w")
+
+        terminal_frame = ttk.LabelFrame(
+            container,
+            text="Terminal output",
+            padding=8,
+        )
+        terminal_frame.pack(fill="both", expand=True, pady=(10, 0))
+
+        text_widget = tk.Text(
+            terminal_frame,
+            wrap="word",
+            font=("Consolas", 10),
+            bg="#111111",
+            fg="#f0f0f0",
+            insertbackground="#f0f0f0",
+            relief="flat",
+        )
+        text_widget.pack(side="left", fill="both", expand=True)
+
+        scrollbar = ttk.Scrollbar(
+            terminal_frame,
+            orient="vertical",
+            command=text_widget.yview,
+        )
+        scrollbar.pack(side="right", fill="y")
+        text_widget.configure(yscrollcommand=scrollbar.set, state="disabled")
+
+        button_frame = ttk.Frame(container)
+        button_frame.pack(fill="x", pady=(10, 0))
+
+        def copy_output() -> None:
+            text_widget.configure(state="normal")
+            output = text_widget.get("1.0", "end-1c")
+            text_widget.configure(state="disabled")
+            window.clipboard_clear()
+            window.clipboard_append(output)
+
+        ttk.Button(button_frame, text="Copy", command=copy_output).pack(side="left")
+        ttk.Button(button_frame, text="Close", command=window.destroy).pack(side="right")
+
+        def worker() -> None:
+            try:
+                process = subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    stdin=subprocess.DEVNULL,
+                    creationflags=creationflags,
+                )
+                if process.stdout is None:
+                    raise RuntimeError("Unable to read command output.")
+
+                while True:
+                    raw = process.stdout.readline()
+                    if not raw:
+                        break
+                    line = raw.decode(encoding, errors="replace")
+                    self.after(0, append_line, line)
+
+                return_code = process.wait()
+                self.after(0, finish, return_code)
+            except Exception as exc:
+                self.after(0, append_line, f"\nError: {exc}\n")
+                self.after(0, title_label.configure, {"text": f"{title} - error"})
+
+        def append_line(line: str) -> None:
+            if not window.winfo_exists():
+                return
+            text_widget.configure(state="normal")
+            text_widget.insert("end", line)
+            text_widget.see("end")
+            text_widget.configure(state="disabled")
+
+        def finish(return_code: int) -> None:
+            if not window.winfo_exists():
+                return
+            suffix = "finished" if return_code == 0 else f"finished ({return_code})"
+            title_label.configure(text=f"{title} - {suffix}")
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def scan_common_ports_selected(self) -> None:
+        values = self._selected_device_values()
+        if values is None:
+            return
+        ip, _, _, _ = values
+
+        ports = {
+            21: "FTP",
+            22: "SSH",
+            23: "Telnet",
+            25: "SMTP",
+            53: "DNS",
+            80: "HTTP",
+            110: "POP3",
+            139: "NetBIOS",
+            143: "IMAP",
+            443: "HTTPS",
+            445: "SMB",
+            3389: "RDP",
+            5900: "VNC",
+            8080: "HTTP-alt",
+            8443: "HTTPS-alt",
+        }
+
+        window = tk.Toplevel(self)
+        window.title(f"Common ports - {ip}")
+        window.geometry("500x430")
+        window.transient(self)
+
+        frame = ttk.Frame(window, padding=12)
+        frame.pack(fill="both", expand=True)
+
+        status = ttk.Label(frame, text=f"Scanning common ports on {ip}...")
+        status.pack(anchor="w")
+
+        tree = ttk.Treeview(
+            frame,
+            columns=("port", "service", "status"),
+            show="headings",
+        )
+        tree.heading("port", text="Port")
+        tree.heading("service", text="Service")
+        tree.heading("status", text="Status")
+        tree.column("port", width=90, anchor="center")
+        tree.column("service", width=180)
+        tree.column("status", width=120, anchor="center")
+        tree.pack(fill="both", expand=True, pady=(10, 0))
+
+        def probe(port: int) -> tuple[int, bool]:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(0.35)
+            try:
+                return port, sock.connect_ex((ip, port)) == 0
+            finally:
+                sock.close()
+
+        def worker() -> None:
+            open_count = 0
+            for port, service in ports.items():
+                try:
+                    _, is_open = probe(port)
+                except OSError:
+                    is_open = False
+
+                if is_open:
+                    open_count += 1
+
+                self.after(
+                    0,
+                    tree.insert,
+                    "",
+                    "end",
+                    {"values": (port, service, "Open" if is_open else "Closed")},
+                )
+
+            self.after(
+                0,
+                status.configure,
+                {"text": f"Scan complete - {open_count} open port(s) found"},
+            )
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def set_label_selected(self) -> None:
         selected_values = self._selected_device_values()
