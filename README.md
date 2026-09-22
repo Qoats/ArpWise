@@ -1,8 +1,13 @@
 # NetScanPy
 
-NetScanPy is a lightweight open-source Python tool for discovering devices on a local network.
+NetScanPy is a lightweight open-source Python tool for discovering devices on your local network.
 
-It scans a private IPv4 subnet with ARP and displays:
+**No Npcap. No Scapy.** NetScanPy uses native operating-system networking features:
+
+- **Windows:** the built-in `SendARP` API from `iphlpapi.dll`
+- **Linux:** normal UDP sockets to trigger neighbor discovery, then `/proc/net/arp`
+
+It displays:
 
 - IPv4 address
 - MAC address
@@ -16,8 +21,10 @@ It scans a private IPv4 subnet with ARP and displays:
 ## Requirements
 
 - Python 3.11+
-- Windows or Linux
-- Administrator/root privileges may be required for ARP scanning
+- Windows 10/11 or Linux
+- No Npcap required
+- No Scapy required
+- No root/admin privileges normally required
 
 ## Installation
 
@@ -34,18 +41,29 @@ Create a virtual environment:
 python -m venv .venv
 ```
 
-Windows:
+### Windows PowerShell
+
+You do not have to activate the virtual environment:
 
 ```powershell
-.venv\Scripts\activate
-pip install -e .
+.\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\netscanpy.exe
 ```
 
-Linux:
+If PowerShell allows virtual-environment activation, you can alternatively use:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+pip install -e .
+netscanpy
+```
+
+### Linux
 
 ```bash
 source .venv/bin/activate
 pip install -e .
+netscanpy
 ```
 
 ## Usage
@@ -62,11 +80,23 @@ Scan a specific private network:
 netscanpy --network 192.168.1.0/24
 ```
 
-Change the ARP timeout:
+Change the neighbor-discovery wait time:
 
 ```bash
 netscanpy --timeout 2
 ```
+
+## How it works
+
+### Windows
+
+NetScanPy calls the Windows `SendARP` API directly with Python's standard-library `ctypes` module. This allows it to obtain the MAC address associated with local IPv4 devices without installing a packet-capture driver.
+
+### Linux
+
+NetScanPy sends a tiny UDP datagram to each address in the selected local subnet. The Linux kernel performs ARP neighbor resolution before attempting delivery. NetScanPy then reads completed entries from `/proc/net/arp`.
+
+The target UDP port does not need to be open.
 
 ## Example
 
@@ -84,9 +114,11 @@ Network: 192.168.1.0/24
 2 devices found.
 ```
 
-## Roadmap
+## Current limitations
 
-Planned ideas:
+NetScanPy v0.2 focuses on devices reachable on the same local IPv4 subnet. ARP does not cross routers, so devices on other routed networks are outside the scope of this discovery method.
+
+## Roadmap
 
 - MAC vendor identification
 - JSON and CSV export
