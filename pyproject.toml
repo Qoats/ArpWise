@@ -14,12 +14,13 @@ authors = [
 ]
 dependencies = [
   "psutil>=6.0.0",
-  "rich>=13.9.0"
+  "rich>=13.9.0",
+  "PySide6>=6.8.0"
 ]
 
 [project.scripts]
 netscanpy = "netscanpy.cli:main"
-netscanpy-gui = "netscanpy.gui_auto:main"
+netscanpy-gui = "netscanpy.qt_gui:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/netscanpy"]
