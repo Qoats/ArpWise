@@ -4,14 +4,15 @@ import ipaddress
 import socket
 import subprocess
 import sys
-import webbrowser
 from dataclasses import dataclass
+from typing import Callable
 
-from PySide6.QtCore import QObject, QRunnable, Qt, QThreadPool, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtCore import QObject, QRunnable, Qt, QThreadPool, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractItemView,
+    QDialog,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -24,6 +25,7 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QTableWidget,
     QTableWidgetItem,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -35,74 +37,86 @@ from .scanner import Device, scan_network
 
 APP_STYLE = """
 QWidget {
-    background: #0a0f15;
     color: #e9eff7;
     font-family: "Segoe UI";
     font-size: 13px;
 }
-QMainWindow, #root { background: #0a0f15; }
-#topbar {
-    background: #0c1219;
-    border-bottom: 1px solid #1e2936;
+QMainWindow, QWidget#root {
+    background: #0d131b;
 }
-#brand {
+QLabel {
+    background: transparent;
+}
+QFrame#topbar,
+QFrame#commandbar,
+QFrame#statusframe {
+    background: #111821;
+    border: 0;
+}
+QFrame#topbar {
+    border-bottom: 1px solid #202b38;
+}
+QFrame#commandbar {
+    border-bottom: 1px solid #202b38;
+}
+QFrame#statusframe {
+    background: #0f161f;
+    border-bottom: 1px solid #202b38;
+}
+QLabel#brand {
     font-size: 18px;
     font-weight: 700;
     color: #ffffff;
 }
-#muted { color: #91a0b2; }
-#sectionTitle {
+QLabel#muted {
+    color: #97a6b8;
+}
+QLabel#sectionTitle {
     font-size: 14px;
     font-weight: 650;
-    color: #f6f9fc;
+    color: #f7f9fc;
 }
-#panel {
-    background: #101720;
-    border: 1px solid #1e2936;
-    border-radius: 7px;
+QFrame#panel,
+QTabWidget#inspector {
+    background: #111821;
+    border: 1px solid #202b38;
 }
-#inspector {
-    background: #0e151d;
-    border: 1px solid #1e2936;
-    border-radius: 7px;
-}
-#statusbar {
-    background: #0c131b;
-    border-bottom: 1px solid #1e2936;
-    color: #94a3b5;
-}
-#emptyState {
-    background: #0d141c;
-    color: #8f9fb1;
+QLabel#emptyState {
+    background: #0f161f;
+    color: #97a6b8;
     font-size: 14px;
 }
 QLineEdit {
     min-height: 34px;
     padding: 0 11px;
-    background: #091018;
+    background: #0a1119;
     color: #ffffff;
-    border: 1px solid #293748;
-    border-radius: 5px;
+    border: 1px solid #2c3a4b;
+    border-radius: 4px;
     selection-background-color: #245d9b;
 }
-QLineEdit:focus { border-color: #3b82f6; }
+QLineEdit:focus {
+    border-color: #3b82f6;
+}
 QPushButton {
     min-height: 34px;
     padding: 0 13px;
-    background: #151f2a;
+    background: #17212d;
     color: #e6edf5;
-    border: 1px solid #2a394a;
-    border-radius: 5px;
+    border: 1px solid #2c3a4b;
+    border-radius: 4px;
 }
 QPushButton:hover {
-    background: #1b2836;
-    border-color: #3c5067;
+    background: #1d2a38;
+    border-color: #41556d;
 }
-QPushButton:pressed { background: #111a24; }
+QPushButton:pressed {
+    background: #111a24;
+}
 QPushButton:disabled {
-    color: #637286;
-    background: #111820;
-    border-color: #202c39;
+    color: #66778a;
+    background: #121a23;
+    border-color: #24303d;
 }
 QPushButton#primary {
     background: #2f7df4;
@@ -110,48 +124,63 @@ QPushButton#primary {
     border-color: #2f7df4;
     font-weight: 650;
 }
-QPushButton#primary:hover { background: #458cf5; }
+QPushButton#primary:hover {
+    background: #478df5;
+}
 QTableWidget {
-    background: #0c131b;
-    alternate-background-color: #0f1721;
+    background: #0f161f;
+    alternate-background-color: #121b25;
     color: #e4ebf3;
     border: 0;
     gridline-color: transparent;
-    selection-background-color: #1d4f82;
+    selection-background-color: #1f5185;
     selection-color: #ffffff;
     outline: 0;
 }
 QHeaderView::section {
-    background: #141d27;
-    color: #b6c2d0;
+    background: #17212d;
+    color: #bbc7d5;
     padding: 8px 10px;
     border: 0;
-    border-bottom: 1px solid #253241;
+    border-bottom: 1px solid #293747;
     font-weight: 600;
 }
 QTableWidget::item {
     padding: 6px 10px;
     border: 0;
 }
-QTabWidget::pane {
+QTabWidget#inspector::pane {
     border: 0;
-    background: #0e151d;
+    background: #111821;
 }
 QTabBar::tab {
-    background: #111a24;
-    color: #9eacbd;
+    background: #141e29;
+    color: #a0afc0;
     border: 0;
     border-bottom: 2px solid transparent;
     padding: 9px 15px;
 }
 QTabBar::tab:selected {
     color: #ffffff;
-    background: #0e151d;
+    background: #111821;
     border-bottom: 2px solid #3b82f6;
 }
 QTabBar::tab:hover {
     color: #ffffff;
-    background: #17212d;
+    background: #1a2633;
+}
+QTextEdit {
+    background: #0a1017;
+    color: #e8eef6;
+    border: 1px solid #293747;
+    border-radius: 4px;
+    padding: 10px;
+    font-family: Consolas;
+    font-size: 12px;
+    selection-background-color: #245d9b;
+}
+QDialog {
+    background: #0d131b;
 }
 """
 
@@ -162,7 +191,7 @@ class WorkerSignals(QObject):
 
 
 class FunctionWorker(QRunnable):
-    def __init__(self, fn, *args) -> None:
+    def __init__(self, fn: Callable[..., object], *args: object) -> None:
         super().__init__()
         self.fn = fn
         self.args = args
@@ -185,6 +214,35 @@ class SelectedDevice:
     label: str
 
 
+class OutputDialog(QDialog):
+    def __init__(self, parent: QWidget, title: str, output: str) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.resize(760, 500)
+        self.setMinimumSize(620, 380)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setSpacing(12)
+
+        heading = QLabel(title, objectName="sectionTitle")
+        layout.addWidget(heading)
+
+        self.text = QTextEdit()
+        self.text.setReadOnly(True)
+        self.text.setPlainText(output or "Aucune sortie")
+        layout.addWidget(self.text, 1)
+
+        close_button = QPushButton("Fermer")
+        close_button.setFixedWidth(110)
+        close_button.clicked.connect(self.accept)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        buttons.addWidget(close_button)
+        layout.addLayout(buttons)
+
+
 class NetScanQt(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -193,6 +251,7 @@ class NetScanQt(QMainWindow):
         self.setMinimumSize(1040, 640)
 
         self.pool = QThreadPool.globalInstance()
+        self._workers: list[FunctionWorker] = []
         self.devices: list[Device] = []
         self.device_labels = load_labels()
         self.public_info: PublicNetworkInfo | None = None
@@ -219,10 +278,7 @@ class NetScanQt(QMainWindow):
         top.addStretch(1)
         outer.addWidget(topbar)
 
-        command = QFrame()
-        command.setStyleSheet(
-            "QFrame { background:#101720; border-bottom:1px solid #1e2936; }"
-        )
+        command = QFrame(objectName="commandbar")
         cmd = QHBoxLayout(command)
         cmd.setContentsMargins(20, 10, 20, 10)
         cmd.setSpacing(10)
@@ -240,10 +296,14 @@ class NetScanQt(QMainWindow):
         cmd.addWidget(self.scan_button)
         outer.addWidget(command)
 
-        self.status_line = QLabel("Prêt", objectName="statusbar")
-        self.status_line.setFixedHeight(28)
-        self.status_line.setContentsMargins(20, 0, 20, 0)
-        outer.addWidget(self.status_line)
+        status_frame = QFrame(objectName="statusframe")
+        status_layout = QHBoxLayout(status_frame)
+        status_layout.setContentsMargins(20, 0, 20, 0)
+        status_layout.setSpacing(0)
+        status_frame.setFixedHeight(28)
+        self.status_line = QLabel("Prêt", objectName="muted")
+        status_layout.addWidget(self.status_line)
+        outer.addWidget(status_frame)
 
         body = QWidget()
         body_layout = QHBoxLayout(body)
@@ -255,7 +315,8 @@ class NetScanQt(QMainWindow):
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(0)
 
-        header = QWidget()
+        header = QFrame()
+        header.setStyleSheet("QFrame { background:#111821; border:0; }")
         header.setFixedHeight(52)
         hh = QHBoxLayout(header)
         hh.setContentsMargins(14, 8, 14, 8)
@@ -289,6 +350,7 @@ class NetScanQt(QMainWindow):
         self.empty_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.table_stack = QStackedWidget()
+        self.table_stack.setStyleSheet("QStackedWidget { border:0; background:#0f161f; }")
         self.table_stack.addWidget(self.empty_state)
         self.table_stack.addWidget(self.table)
         self.table_stack.setCurrentWidget(self.empty_state)
@@ -297,7 +359,9 @@ class NetScanQt(QMainWindow):
         self.tabs = QTabWidget(objectName="inspector")
         self.tabs.setFixedWidth(330)
         self.device_tab = QWidget()
+        self.device_tab.setStyleSheet("background:#111821;")
         self.network_tab = QWidget()
+        self.network_tab.setStyleSheet("background:#111821;")
         self.tabs.addTab(self.device_tab, "Appareil")
         self.tabs.addTab(self.network_tab, "Réseau")
         self._build_device_tab()
@@ -339,10 +403,8 @@ class NetScanQt(QMainWindow):
         self.ports_btn = QPushButton("Scanner les ports courants")
         self.browser_btn = QPushButton("Ouvrir dans le navigateur")
 
-        self.ping_btn.clicked.connect(lambda: self._run_command("Ping", self._ping_command()))
-        self.trace_btn.clicked.connect(
-            lambda: self._run_command("Traceroute", self._trace_command())
-        )
+        self.ping_btn.clicked.connect(self._ping_selected)
+        self.trace_btn.clicked.connect(self._traceroute_selected)
         self.ports_btn.clicked.connect(self._scan_ports)
         self.browser_btn.clicked.connect(self._open_browser)
 
@@ -376,12 +438,12 @@ class NetScanQt(QMainWindow):
 
         actions = QHBoxLayout()
         actions.setSpacing(6)
-        refresh = QPushButton("Actualiser")
-        map_btn = QPushButton("Carte")
-        refresh.clicked.connect(self._refresh_network_info)
-        map_btn.clicked.connect(self._open_map)
-        actions.addWidget(refresh)
-        actions.addWidget(map_btn)
+        self.refresh_button = QPushButton("Actualiser")
+        self.map_button = QPushButton("Carte")
+        self.refresh_button.clicked.connect(self._refresh_network_info)
+        self.map_button.clicked.connect(self._open_map)
+        actions.addWidget(self.refresh_button)
+        actions.addWidget(self.map_button)
         layout.addLayout(actions)
 
         note = QLabel(
@@ -391,6 +453,32 @@ class NetScanQt(QMainWindow):
         note.setWordWrap(True)
         layout.addWidget(note)
         layout.addStretch(1)
+
+    def _launch_worker(
+        self,
+        fn: Callable[..., object],
+        *args: object,
+        finished: Callable[[object], None],
+        failed: Callable[[str], None],
+    ) -> None:
+        worker = FunctionWorker(fn, *args)
+        self._workers.append(worker)
+
+        def cleanup() -> None:
+            if worker in self._workers:
+                self._workers.remove(worker)
+
+        def on_finished(result: object) -> None:
+            cleanup()
+            finished(result)
+
+        def on_failed(error: str) -> None:
+            cleanup()
+            failed(error)
+
+        worker.signals.finished.connect(on_finished)
+        worker.signals.failed.connect(on_failed)
+        self.pool.start(worker)
 
     def _detect_network(self) -> str | None:
         local = get_local_network_info()
@@ -425,12 +513,16 @@ class NetScanQt(QMainWindow):
         self.table_stack.setCurrentWidget(self.empty_state)
         self.empty_state.setText(f"Analyse de {network}…")
         self.scan_button.setEnabled(False)
+        self.scan_button.setText("Analyse…")
         self.status_line.setText(f"Analyse de {network}…")
 
-        worker = FunctionWorker(scan_network, network, 1.0)
-        worker.signals.finished.connect(self._scan_finished)
-        worker.signals.failed.connect(self._scan_failed)
-        self.pool.start(worker)
+        self._launch_worker(
+            scan_network,
+            network,
+            1.0,
+            finished=self._scan_finished,
+            failed=self._scan_failed,
+        )
 
     def _scan_finished(self, devices: object) -> None:
         self.devices = list(devices) if isinstance(devices, list) else []
@@ -439,6 +531,7 @@ class NetScanQt(QMainWindow):
             f"{len(self.devices)} appareil(s) détecté(s) · {self.current_network}"
         )
         self.scan_button.setEnabled(True)
+        self.scan_button.setText("Scanner")
 
         if self.devices:
             self.table_stack.setCurrentWidget(self.table)
@@ -448,6 +541,7 @@ class NetScanQt(QMainWindow):
 
     def _scan_failed(self, error: str) -> None:
         self.scan_button.setEnabled(True)
+        self.scan_button.setText("Scanner")
         self.status_line.setText("Échec du scan")
         self.empty_state.setText("Le scan réseau a échoué.")
         self.table_stack.setCurrentWidget(self.empty_state)
@@ -507,13 +601,17 @@ class NetScanQt(QMainWindow):
     def _refresh_network_info(self) -> None:
         self._detect_network()
         self.pub_ip.setText("Chargement…")
+        self.refresh_button.setEnabled(False)
+        self.status_line.setText("Actualisation des informations réseau…")
 
-        worker = FunctionWorker(fetch_public_network_info)
-        worker.signals.finished.connect(self._public_info_ready)
-        worker.signals.failed.connect(self._public_info_failed)
-        self.pool.start(worker)
+        self._launch_worker(
+            fetch_public_network_info,
+            finished=self._public_info_ready,
+            failed=self._public_info_failed,
+        )
 
     def _public_info_ready(self, result: object) -> None:
+        self.refresh_button.setEnabled(True)
         if not isinstance(result, PublicNetworkInfo):
             return
 
@@ -534,8 +632,10 @@ class NetScanQt(QMainWindow):
             else f"{result.timezone} ({result.utc_offset})"
         )
         self.pub_tz.setText(tz)
+        self.status_line.setText("Informations réseau actualisées")
 
-    def _public_info_failed(self, _error: str) -> None:
+    def _public_info_failed(self, error: str) -> None:
+        self.refresh_button.setEnabled(True)
         for label in (
             self.pub_ip,
             self.pub_loc,
@@ -545,51 +645,85 @@ class NetScanQt(QMainWindow):
             self.pub_tz,
         ):
             label.setText("Indisponible")
+        self.status_line.setText(f"Informations Internet indisponibles : {error}")
 
     def _open_map(self) -> None:
         info = self.public_info
-        if info and info.latitude != "—" and info.longitude != "—":
-            webbrowser.open(
-                f"https://www.openstreetmap.org/?mlat={info.latitude}&mlon={info.longitude}"
-                f"#map=12/{info.latitude}/{info.longitude}"
+        if not info or info.latitude == "—" or info.longitude == "—":
+            QMessageBox.information(
+                self,
+                "Carte",
+                "Les coordonnées publiques ne sont pas encore disponibles.",
             )
+            return
+
+        url = QUrl(
+            f"https://www.openstreetmap.org/?mlat={info.latitude}&mlon={info.longitude}"
+            f"#map=12/{info.latitude}/{info.longitude}"
+        )
+        QDesktopServices.openUrl(url)
 
     def _open_browser(self) -> None:
         device = self._selected()
-        if device:
-            webbrowser.open(f"http://{device.ip}")
+        if not device:
+            QMessageBox.information(self, "Navigateur", "Sélectionne d’abord un appareil.")
+            return
 
-    def _ping_command(self) -> list[str]:
+        self.status_line.setText(f"Ouverture de http://{device.ip}")
+        QDesktopServices.openUrl(QUrl(f"http://{device.ip}"))
+
+    def _ping_selected(self) -> None:
         device = self._selected()
         if not device:
-            return []
-        return [
+            return
+        command = [
             "ping",
             "-n" if sys.platform.startswith("win") else "-c",
             "4",
             device.ip,
         ]
+        self._run_command(f"Ping · {device.ip}", command)
 
-    def _trace_command(self) -> list[str]:
+    def _traceroute_selected(self) -> None:
         device = self._selected()
         if not device:
-            return []
-        if sys.platform.startswith("win"):
-            return ["tracert", "-d", device.ip]
-        return ["traceroute", "-n", device.ip]
+            return
+        command = (
+            ["tracert", "-d", device.ip]
+            if sys.platform.startswith("win")
+            else ["traceroute", "-n", device.ip]
+        )
+        self._run_command(f"Traceroute · {device.ip}", command)
 
     def _run_command(self, title: str, command: list[str]) -> None:
         if not command:
             return
 
-        worker = FunctionWorker(self._execute_command, command)
-        worker.signals.finished.connect(
-            lambda output: self._show_output(title, str(output))
+        self.status_line.setText(f"{title} en cours…")
+        self._set_action_buttons_enabled(False)
+
+        def done(output: object) -> None:
+            self._set_action_buttons_enabled(True)
+            self.status_line.setText(f"{title} terminé")
+            self._show_output(title, str(output))
+
+        def failed(error: str) -> None:
+            self._set_action_buttons_enabled(True)
+            self.status_line.setText(f"{title} : erreur")
+            QMessageBox.critical(self, title, error)
+
+        self._launch_worker(
+            self._execute_command,
+            command,
+            finished=done,
+            failed=failed,
         )
-        worker.signals.failed.connect(
-            lambda error: QMessageBox.critical(self, title, error)
-        )
-        self.pool.start(worker)
+
+    def _set_action_buttons_enabled(self, enabled: bool) -> None:
+        has_selection = self._selected() is not None
+        state = enabled and has_selection
+        for button in (self.ping_btn, self.trace_btn, self.ports_btn, self.browser_btn):
+            button.setEnabled(state)
 
     @staticmethod
     def _execute_command(command: list[str]) -> str:
@@ -601,15 +735,12 @@ class NetScanQt(QMainWindow):
             timeout=45,
         )
         encoding = "cp850" if sys.platform.startswith("win") else "utf-8"
-        return completed.stdout.decode(
-            encoding, errors="replace"
-        ) + completed.stderr.decode(encoding, errors="replace")
+        stdout = completed.stdout.decode(encoding, errors="replace")
+        stderr = completed.stderr.decode(encoding, errors="replace")
+        return (stdout + stderr).strip() or "Commande terminée sans sortie."
 
     def _show_output(self, title: str, output: str) -> None:
-        dialog = QMessageBox(self)
-        dialog.setWindowTitle(title)
-        dialog.setText(title)
-        dialog.setDetailedText(output or "Aucune sortie")
+        dialog = OutputDialog(self, title, output)
         dialog.exec()
 
     def _scan_ports(self) -> None:
@@ -617,14 +748,26 @@ class NetScanQt(QMainWindow):
         if not device:
             return
 
-        worker = FunctionWorker(self._port_scan, device.ip)
-        worker.signals.finished.connect(
-            lambda result: self._show_output("Ports courants", str(result))
+        title = f"Ports courants · {device.ip}"
+        self.status_line.setText(f"Analyse des ports de {device.ip}…")
+        self._set_action_buttons_enabled(False)
+
+        def done(result: object) -> None:
+            self._set_action_buttons_enabled(True)
+            self.status_line.setText(f"Analyse des ports de {device.ip} terminée")
+            self._show_output(title, str(result))
+
+        def failed(error: str) -> None:
+            self._set_action_buttons_enabled(True)
+            self.status_line.setText("Analyse des ports : erreur")
+            QMessageBox.critical(self, "Ports", error)
+
+        self._launch_worker(
+            self._port_scan,
+            device.ip,
+            finished=done,
+            failed=failed,
         )
-        worker.signals.failed.connect(
-            lambda error: QMessageBox.critical(self, "Ports", error)
-        )
-        self.pool.start(worker)
 
     @staticmethod
     def _port_scan(ip: str) -> str:
@@ -644,13 +787,13 @@ class NetScanQt(QMainWindow):
 
         for port, service in ports.items():
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(0.3)
+            sock.settimeout(0.35)
             try:
-                open_ = sock.connect_ex((ip, port)) == 0
+                is_open = sock.connect_ex((ip, port)) == 0
             finally:
                 sock.close()
 
-            if open_:
+            if is_open:
                 lines.append(f"{port}/tcp  OUVERT  {service}")
 
         return "\n".join(lines) if lines else "Aucun port courant ouvert détecté."
