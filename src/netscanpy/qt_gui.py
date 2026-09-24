@@ -92,7 +92,7 @@ QLineEdit {
     background: #0a1119;
     color: #ffffff;
     border: 1px solid #2c3a4b;
-    border-radius: 4px;
+    border-radius: 0;
     selection-background-color: #245d9b;
 }
 QLineEdit:focus {
@@ -104,7 +104,7 @@ QPushButton {
     background: #17212d;
     color: #e6edf5;
     border: 1px solid #2c3a4b;
-    border-radius: 4px;
+    border-radius: 0;
 }
 QPushButton:hover {
     background: #1d2a38;
@@ -158,6 +158,7 @@ QTabBar::tab {
     color: #a0afc0;
     border: 0;
     border-bottom: 2px solid transparent;
+    border-radius: 0;
     padding: 9px 15px;
 }
 QTabBar::tab:selected {
@@ -173,7 +174,7 @@ QTextEdit {
     background: #0a1017;
     color: #e8eef6;
     border: 1px solid #293747;
-    border-radius: 4px;
+    border-radius: 0;
     padding: 10px;
     font-family: Consolas;
     font-size: 12px;
