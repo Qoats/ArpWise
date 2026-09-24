@@ -8,24 +8,32 @@ from .gui import NetScanPyApp, TRANSLATIONS
 
 EXTRA_TRANSLATIONS = {
     "fr": {
-        "selected_device": "Appareil sélectionné",
+        "selected_device": "Détails de l'appareil",
         "quick_actions": "Actions",
         "search_label": "Rechercher",
+        "inventory": "Inventaire réseau",
+        "devices_online": "Appareils",
     },
     "en": {
-        "selected_device": "Selected device",
+        "selected_device": "Device details",
         "quick_actions": "Actions",
         "search_label": "Search",
+        "inventory": "Network inventory",
+        "devices_online": "Devices",
     },
     "de": {
-        "selected_device": "Ausgewähltes Gerät",
+        "selected_device": "Gerätedetails",
         "quick_actions": "Aktionen",
         "search_label": "Suchen",
+        "inventory": "Netzwerkinventar",
+        "devices_online": "Geräte",
     },
     "zh": {
-        "selected_device": "已选设备",
+        "selected_device": "设备详情",
         "quick_actions": "操作",
         "search_label": "搜索",
+        "inventory": "网络资产",
+        "devices_online": "设备",
     },
 }
 
@@ -34,120 +42,138 @@ for language, values in EXTRA_TRANSLATIONS.items():
 
 
 class ModernNetScanPyApp(NetScanPyApp):
+    """Professional dark-only network console."""
+
     def __init__(self) -> None:
         self.theme = "dark"
         super().__init__()
         self.theme = "dark"
         self.title("NetScanPy")
-        self.geometry("1200x760")
-        self.minsize(960, 620)
+        self.geometry("1280x780")
+        self.minsize(1020, 640)
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
         self.rowconfigure(3, weight=1)
 
-        # Header: only the product name and useful controls.
-        self.header = ttk.Frame(self, style="Header.TFrame", padding=(24, 14))
+        # Product bar.
+        self.header = ttk.Frame(self, style="Header.TFrame", padding=(24, 0))
         self.header.grid(row=0, column=0, sticky="ew")
         self.header.columnconfigure(0, weight=1)
+        self.header.configure(height=58)
+        self.header.grid_propagate(False)
 
-        self.brand_title = ttk.Label(
-            self.header,
-            text="NetScanPy",
-            style="Brand.TLabel",
-        )
-        self.brand_title.grid(row=0, column=0, sticky="w")
+        self.brand_title = ttk.Label(self.header, text="NetScanPy", style="Brand.TLabel")
+        self.brand_title.grid(row=0, column=0, sticky="w", pady=17)
 
         self.header_actions = ttk.Frame(self.header, style="Header.TFrame")
         self.header_actions.grid(row=0, column=1, sticky="e")
 
-        # Scanner controls.
-        self.scan_card = ttk.Frame(self, style="Card.TFrame", padding=(18, 16))
-        self.scan_card.grid(row=1, column=0, sticky="ew", padx=24, pady=(18, 12))
-        self.scan_card.columnconfigure(1, weight=1)
+        # Command bar.
+        self.command_bar = ttk.Frame(self, style="Command.TFrame", padding=(24, 14))
+        self.command_bar.grid(row=1, column=0, sticky="ew")
+        self.command_bar.columnconfigure(1, weight=1)
 
         self.network_label = ttk.Label(
-            self.scan_card,
-            text=self._t("network"),
-            style="FieldLabel.TLabel",
+            self.command_bar, text=self._t("network"), style="CommandLabel.TLabel"
         )
         self.network_label.grid(row=0, column=0, sticky="w", padx=(0, 12))
 
         self.network_entry = ttk.Entry(
-            self.scan_card,
+            self.command_bar,
             textvariable=self.network_var,
             style="Modern.TEntry",
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 10),
         )
-        self.network_entry.grid(row=0, column=1, sticky="ew", ipady=6)
+        self.network_entry.grid(row=0, column=1, sticky="ew", ipady=5)
 
         self.scan_button = ttk.Button(
-            self.scan_card,
+            self.command_bar,
             text=self._t("scan"),
             command=self.start_scan,
             style="Accent.TButton",
         )
-        self.scan_button.grid(row=0, column=2, padx=(12, 0), ipadx=16, ipady=4)
+        self.scan_button.grid(row=0, column=2, padx=(10, 0), ipadx=14, ipady=3)
 
-        # Useful information only.
-        self.stats = ttk.Frame(self, style="Root.TFrame")
-        self.stats.grid(row=2, column=0, sticky="ew", padx=24, pady=(0, 12))
-        for i in range(3):
-            self.stats.columnconfigure(i, weight=1, uniform="stats")
+        # Compact operational status line instead of decorative statistic cards.
+        self.summary_bar = ttk.Frame(self, style="Summary.TFrame", padding=(24, 9))
+        self.summary_bar.grid(row=2, column=0, sticky="ew")
 
-        self.devices_card = self._make_stat_card(
-            self.stats, 0, self._t("devices"), self.count_var
+        self.summary_devices_title = ttk.Label(
+            self.summary_bar, text=self._t("devices_online"), style="SummaryKey.TLabel"
         )
-        self.network_card = self._make_stat_card(
-            self.stats, 1, self._t("current_network"), self.network_stat_var
+        self.summary_devices_title.pack(side="left")
+        self.summary_devices_value = ttk.Label(
+            self.summary_bar, textvariable=self.count_var, style="SummaryValue.TLabel"
         )
-        self.status_card = self._make_stat_card(
-            self.stats, 2, self._t("status"), self.status_var
-        )
+        self.summary_devices_value.pack(side="left", padx=(7, 22))
 
-        workspace = ttk.Frame(self, style="Root.TFrame")
-        workspace.grid(row=3, column=0, sticky="nsew", padx=24, pady=(0, 20))
+        ttk.Separator(self.summary_bar, orient="vertical").pack(side="left", fill="y", padx=(0, 22))
+
+        self.summary_network_title = ttk.Label(
+            self.summary_bar, text=self._t("current_network"), style="SummaryKey.TLabel"
+        )
+        self.summary_network_title.pack(side="left")
+        self.summary_network_value = ttk.Label(
+            self.summary_bar, textvariable=self.network_stat_var, style="SummaryValue.TLabel"
+        )
+        self.summary_network_value.pack(side="left", padx=(7, 22))
+
+        ttk.Separator(self.summary_bar, orient="vertical").pack(side="left", fill="y", padx=(0, 22))
+
+        self.summary_status_title = ttk.Label(
+            self.summary_bar, text=self._t("status"), style="SummaryKey.TLabel"
+        )
+        self.summary_status_title.pack(side="left")
+        self.summary_status_value = ttk.Label(
+            self.summary_bar, textvariable=self.status_var, style="StatusValue.TLabel"
+        )
+        self.summary_status_value.pack(side="left", padx=(7, 0))
+
+        # Workspace.
+        workspace = ttk.Frame(self, style="Root.TFrame", padding=(18, 18, 18, 20))
+        workspace.grid(row=3, column=0, sticky="nsew")
         workspace.columnconfigure(0, weight=1)
         workspace.columnconfigure(1, weight=0)
         workspace.rowconfigure(0, weight=1)
 
-        # Device list.
-        self.content_card = ttk.Frame(workspace, style="Card.TFrame", padding=(18, 16))
+        # Main inventory surface.
+        self.content_card = ttk.Frame(workspace, style="Panel.TFrame")
         self.content_card.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
         self.content_card.columnconfigure(0, weight=1)
         self.content_card.rowconfigure(2, weight=1)
 
-        top_row = ttk.Frame(self.content_card, style="Card.TFrame")
-        top_row.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-        top_row.columnconfigure(0, weight=1)
+        table_header = ttk.Frame(self.content_card, style="Panel.TFrame", padding=(18, 15))
+        table_header.grid(row=0, column=0, sticky="ew")
+        table_header.columnconfigure(0, weight=1)
 
         self.devices_title = ttk.Label(
-            top_row,
-            text=self._t("devices"),
-            style="SectionTitle.TLabel",
+            table_header, text=self._t("inventory"), style="SectionTitle.TLabel"
         )
         self.devices_title.grid(row=0, column=0, sticky="w")
 
-        search_row = ttk.Frame(self.content_card, style="Card.TFrame")
-        search_row.grid(row=1, column=0, sticky="ew", pady=(0, 12))
-        search_row.columnconfigure(1, weight=1)
+        search_wrap = ttk.Frame(table_header, style="Panel.TFrame")
+        search_wrap.grid(row=0, column=1, sticky="e")
 
         self.search_label = ttk.Label(
-            search_row,
-            text=self._t("search_label"),
-            style="FieldLabel.TLabel",
+            search_wrap, text=self._t("search_label"), style="SearchLabel.TLabel"
         )
-        self.search_label.grid(row=0, column=0, sticky="w", padx=(0, 10))
+        self.search_label.pack(side="left", padx=(0, 8))
 
         self.search_entry = ttk.Entry(
-            search_row,
+            search_wrap,
             textvariable=self.search_var,
             style="Search.TEntry",
-            font=("Segoe UI", 10),
+            width=28,
+            font=("Segoe UI", 9),
         )
-        self.search_entry.grid(row=0, column=1, sticky="ew", ipady=5)
+        self.search_entry.pack(side="left", ipady=3)
 
-        table_wrap = ttk.Frame(self.content_card, style="Table.TFrame", padding=1)
+        ttk.Separator(self.content_card, orient="horizontal").grid(
+            row=1, column=0, sticky="ew"
+        )
+
+        table_wrap = ttk.Frame(self.content_card, style="Panel.TFrame")
         table_wrap.grid(row=2, column=0, sticky="nsew")
         table_wrap.columnconfigure(0, weight=1)
         table_wrap.rowconfigure(0, weight=1)
@@ -157,9 +183,8 @@ class ModernNetScanPyApp(NetScanPyApp):
             columns=("ip", "mac", "hostname", "label"),
             show="headings",
             selectmode="browse",
-            style="Modern.Treeview",
+            style="Enterprise.Treeview",
         )
-
         for column, title in (
             ("ip", self._t("ip")),
             ("mac", self._t("mac")),
@@ -168,10 +193,10 @@ class ModernNetScanPyApp(NetScanPyApp):
         ):
             self.tree.heading(column, text=title)
 
-        self.tree.column("ip", width=145, minwidth=115, anchor="w")
-        self.tree.column("mac", width=185, minwidth=150, anchor="w")
-        self.tree.column("hostname", width=250, minwidth=160, anchor="w")
-        self.tree.column("label", width=170, minwidth=115, anchor="w")
+        self.tree.column("ip", width=150, minwidth=120, anchor="w")
+        self.tree.column("mac", width=195, minwidth=160, anchor="w")
+        self.tree.column("hostname", width=280, minwidth=180, anchor="w")
+        self.tree.column("label", width=180, minwidth=120, anchor="w")
 
         scrollbar = ttk.Scrollbar(table_wrap, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
@@ -183,25 +208,31 @@ class ModernNetScanPyApp(NetScanPyApp):
             mode="indeterminate",
             style="Accent.Horizontal.TProgressbar",
         )
-        self.progress.grid(row=3, column=0, sticky="ew", pady=(12, 0))
+        self.progress.grid(row=3, column=0, sticky="ew")
 
-        # Device inspector.
-        self.detail_card = ttk.Frame(
-            workspace,
-            style="Detail.TFrame",
-            padding=(20, 18),
-        )
+        # Right-side device inspector.
+        self.detail_card = ttk.Frame(workspace, style="Inspector.TFrame")
         self.detail_card.grid(row=0, column=1, sticky="ns")
-        self.detail_card.configure(width=300)
+        self.detail_card.configure(width=312)
         self.detail_card.grid_propagate(False)
         self.detail_card.columnconfigure(0, weight=1)
 
+        inspector_header = ttk.Frame(self.detail_card, style="Inspector.TFrame", padding=(18, 16))
+        inspector_header.grid(row=0, column=0, sticky="ew")
         self.detail_title = ttk.Label(
-            self.detail_card,
+            inspector_header,
             text=self._t("selected_device"),
-            style="DetailTitle.TLabel",
+            style="InspectorTitle.TLabel",
         )
-        self.detail_title.grid(row=0, column=0, sticky="w", pady=(0, 16))
+        self.detail_title.pack(anchor="w")
+
+        ttk.Separator(self.detail_card, orient="horizontal").grid(
+            row=1, column=0, sticky="ew"
+        )
+
+        inspector_body = ttk.Frame(self.detail_card, style="Inspector.TFrame", padding=(18, 16))
+        inspector_body.grid(row=2, column=0, sticky="nsew")
+        inspector_body.columnconfigure(0, weight=1)
 
         self.selected_ip_var = tk.StringVar(value="—")
         self.selected_mac_var = tk.StringVar(value="—")
@@ -209,60 +240,56 @@ class ModernNetScanPyApp(NetScanPyApp):
         self.selected_label_var = tk.StringVar(value="—")
 
         self.detail_value_labels: list[ttk.Label] = []
-        row = 1
+        row = 0
         for key, variable in (
             ("ip", self.selected_ip_var),
             ("mac", self.selected_mac_var),
             ("hostname", self.selected_host_var),
             ("label", self.selected_label_var),
         ):
-            label = ttk.Label(
-                self.detail_card,
+            key_label = ttk.Label(
+                inspector_body,
                 text=self._t(key),
-                style="DetailKey.TLabel",
+                style="InspectorKey.TLabel",
             )
-            label.grid(row=row, column=0, sticky="w", pady=(0, 3))
-
-            value = ttk.Label(
-                self.detail_card,
+            key_label.grid(row=row, column=0, sticky="w")
+            value_label = ttk.Label(
+                inspector_body,
                 textvariable=variable,
-                style="DetailValue.TLabel",
-                wraplength=255,
+                style="InspectorValue.TLabel",
+                wraplength=265,
             )
-            value.grid(row=row + 1, column=0, sticky="w", pady=(0, 13))
-            self.detail_value_labels.append(label)
+            value_label.grid(row=row + 1, column=0, sticky="w", pady=(3, 15))
+            self.detail_value_labels.append(key_label)
             row += 2
 
-        ttk.Separator(self.detail_card, orient="horizontal").grid(
-            row=row,
-            column=0,
-            sticky="ew",
-            pady=(4, 14),
+        ttk.Separator(inspector_body, orient="horizontal").grid(
+            row=row, column=0, sticky="ew", pady=(2, 15)
         )
         row += 1
 
         self.quick_actions_label = ttk.Label(
-            self.detail_card,
+            inspector_body,
             text=self._t("quick_actions"),
-            style="DetailKey.TLabel",
+            style="InspectorKey.TLabel",
         )
         self.quick_actions_label.grid(row=row, column=0, sticky="w", pady=(0, 8))
         row += 1
 
         self.quick_buttons: list[ttk.Button] = []
         for text_key, command, style_name in (
-            ("ping", self.ping_selected, "Accent.TButton"),
-            ("traceroute", self.traceroute_selected, "Secondary.TButton"),
-            ("scan_ports", self.scan_common_ports_selected, "Secondary.TButton"),
-            ("open_browser", self.open_in_browser_selected, "Secondary.TButton"),
+            ("ping", self.ping_selected, "PrimaryAction.TButton"),
+            ("traceroute", self.traceroute_selected, "Inspector.TButton"),
+            ("scan_ports", self.scan_common_ports_selected, "Inspector.TButton"),
+            ("open_browser", self.open_in_browser_selected, "Inspector.TButton"),
         ):
             button = ttk.Button(
-                self.detail_card,
+                inspector_body,
                 text=self._t(text_key),
                 command=command,
                 style=style_name,
             )
-            button.grid(row=row, column=0, sticky="ew", pady=4)
+            button.grid(row=row, column=0, sticky="ew", pady=3)
             button.state(["disabled"])
             self.quick_buttons.append(button)
             row += 1
@@ -306,7 +333,6 @@ class ModernNetScanPyApp(NetScanPyApp):
 
     def _on_device_selected(self, _event: object | None = None) -> None:
         values = self._selected_device_values()
-
         if not values:
             for variable in (
                 self.selected_ip_var,
@@ -315,7 +341,6 @@ class ModernNetScanPyApp(NetScanPyApp):
                 self.selected_label_var,
             ):
                 variable.set("—")
-
             for button in self.quick_buttons:
                 button.state(["disabled"])
             return
@@ -325,18 +350,15 @@ class ModernNetScanPyApp(NetScanPyApp):
         self.selected_mac_var.set(mac)
         self.selected_host_var.set(hostname or self._t("unknown"))
         self.selected_label_var.set(label or self._t("none"))
-
         for button in self.quick_buttons:
             button.state(["!disabled"])
 
     def _refresh_device_table(self) -> None:
         super()._refresh_device_table()
         children = self.tree.get_children()
-
         if children and not self.tree.selection():
             self.tree.selection_set(children[0])
             self.tree.focus(children[0])
-
         self._on_device_selected()
 
     def _apply_language(self) -> None:
@@ -350,15 +372,14 @@ class ModernNetScanPyApp(NetScanPyApp):
         self.tree.heading("label", text=self._t("label"))
         self._populate_context_menu()
 
-        self.devices_card._title_label.configure(text=self._t("devices"))  # type: ignore[attr-defined]
-        self.network_card._title_label.configure(text=self._t("current_network"))  # type: ignore[attr-defined]
-        self.status_card._title_label.configure(text=self._t("status"))  # type: ignore[attr-defined]
         self.count_var.set(self._t("device_count", count=len(self.devices)))
-
         if self.status_var.get() in ("Ready", "Prêt", "Bereit", "就绪"):
             self.status_var.set(self._t("ready"))
 
-        self.devices_title.configure(text=self._t("devices"))
+        self.summary_devices_title.configure(text=self._t("devices_online"))
+        self.summary_network_title.configure(text=self._t("current_network"))
+        self.summary_status_title.configure(text=self._t("status"))
+        self.devices_title.configure(text=self._t("inventory"))
         self.search_label.configure(text=self._t("search_label"))
         self.detail_title.configure(text=self._t("selected_device"))
         self.quick_actions_label.configure(text=self._t("quick_actions"))
@@ -380,132 +401,45 @@ class ModernNetScanPyApp(NetScanPyApp):
         super()._apply_theme()
         style = ttk.Style(self)
 
-        root = "#0a0d12"
+        root = "#0b0f14"
         header = "#0d1117"
-        card = "#11161f"
-        raised = "#151b25"
-        field = "#0c1118"
-        detail = "#0f141c"
-        border = "#252d3a"
-        fg = "#f2f5f8"
-        muted = "#7f8b9d"
-        accent = "#4f8cff"
-        accent_hover = "#6c9fff"
-        selected = "#17345f"
-        hover = "#1b2431"
+        command = "#11161d"
+        panel = "#11161d"
+        inspector = "#0f141b"
+        field = "#0b1016"
+        border = "#28313d"
+        border_soft = "#202833"
+        fg = "#e7edf5"
+        muted = "#8b98a9"
+        accent = "#2f81f7"
+        accent_hover = "#4b92f8"
+        selected = "#173a63"
+        hover = "#18212c"
+        status = "#7ee2a8"
 
         self.configure(bg=root)
 
         style.configure("Root.TFrame", background=root)
         style.configure("Header.TFrame", background=header)
-        style.configure("Card.TFrame", background=card)
-        style.configure("Detail.TFrame", background=detail)
-        style.configure("Table.TFrame", background=border)
+        style.configure("Command.TFrame", background=command)
+        style.configure("Summary.TFrame", background="#0e131a")
+        style.configure("Panel.TFrame", background=panel)
+        style.configure("Inspector.TFrame", background=inspector)
 
         style.configure(
             "Brand.TLabel",
             background=header,
             foreground=fg,
-            font=("Segoe UI Semibold", 19),
+            font=("Segoe UI Semibold", 16),
         )
-        style.configure(
-            "FieldLabel.TLabel",
-            background=card,
-            foreground=muted,
-            font=("Segoe UI Semibold", 9),
-        )
-        style.configure(
-            "SectionTitle.TLabel",
-            background=card,
-            foreground=fg,
-            font=("Segoe UI Semibold", 14),
-        )
-        style.configure(
-            "StatTitle.TLabel",
-            background=card,
-            foreground=muted,
-            font=("Segoe UI Semibold", 8),
-        )
-        style.configure(
-            "StatValue.TLabel",
-            background=card,
-            foreground=fg,
-            font=("Segoe UI Semibold", 13),
-        )
-        style.configure(
-            "DetailTitle.TLabel",
-            background=detail,
-            foreground=fg,
-            font=("Segoe UI Semibold", 14),
-        )
-        style.configure(
-            "DetailKey.TLabel",
-            background=detail,
-            foreground=muted,
-            font=("Segoe UI Semibold", 8),
-        )
-        style.configure(
-            "DetailValue.TLabel",
-            background=detail,
-            foreground=fg,
-            font=("Segoe UI", 10),
-        )
-
-        style.configure(
-            "Modern.TEntry",
-            fieldbackground=field,
-            foreground=fg,
-            insertcolor=fg,
-            bordercolor=border,
-            lightcolor=border,
-            darkcolor=border,
-            padding=(11, 9),
-        )
-        style.configure(
-            "Search.TEntry",
-            fieldbackground=field,
-            foreground=fg,
-            insertcolor=fg,
-            bordercolor=border,
-            lightcolor=border,
-            darkcolor=border,
-            padding=(11, 9),
-        )
-
-        style.configure(
-            "Accent.TButton",
-            background=accent,
-            foreground="#ffffff",
-            bordercolor=accent,
-            padding=(14, 9),
-            font=("Segoe UI Semibold", 10),
-        )
-        style.map(
-            "Accent.TButton",
-            background=[("active", accent_hover), ("pressed", accent_hover)],
-            foreground=[("disabled", "#6e7785")],
-        )
-
-        style.configure(
-            "Secondary.TButton",
-            background=raised,
-            foreground=fg,
-            bordercolor=border,
-            padding=(12, 8),
-            font=("Segoe UI", 9),
-        )
-        style.map(
-            "Secondary.TButton",
-            background=[("active", hover), ("pressed", hover)],
-            foreground=[("disabled", "#616b79")],
-        )
-
         style.configure(
             "Header.TMenubutton",
             background=header,
             foreground=muted,
-            bordercolor=border,
-            padding=(12, 7),
+            bordercolor=border_soft,
+            lightcolor=border_soft,
+            darkcolor=border_soft,
+            padding=(11, 6),
             font=("Segoe UI", 9),
         )
         style.map(
@@ -515,45 +449,166 @@ class ModernNetScanPyApp(NetScanPyApp):
         )
 
         style.configure(
-            "Modern.Treeview",
-            background=field,
-            fieldbackground=field,
-            foreground=fg,
-            bordercolor=border,
-            rowheight=38,
-            font=("Segoe UI", 10),
+            "CommandLabel.TLabel",
+            background=command,
+            foreground=muted,
+            font=("Segoe UI Semibold", 9),
         )
         style.configure(
-            "Modern.Treeview.Heading",
-            background=raised,
-            foreground="#a6b0bf",
+            "Modern.TEntry",
+            fieldbackground=field,
+            foreground=fg,
+            insertcolor=fg,
             bordercolor=border,
-            padding=(9, 10),
+            lightcolor=border,
+            darkcolor=border,
+            padding=(10, 7),
+        )
+        style.configure(
+            "Accent.TButton",
+            background=accent,
+            foreground="#ffffff",
+            bordercolor=accent,
+            lightcolor=accent,
+            darkcolor=accent,
+            padding=(14, 7),
             font=("Segoe UI Semibold", 9),
         )
         style.map(
-            "Modern.Treeview",
+            "Accent.TButton",
+            background=[("active", accent_hover), ("pressed", accent_hover)],
+        )
+
+        style.configure(
+            "SummaryKey.TLabel",
+            background="#0e131a",
+            foreground=muted,
+            font=("Segoe UI", 8),
+        )
+        style.configure(
+            "SummaryValue.TLabel",
+            background="#0e131a",
+            foreground=fg,
+            font=("Segoe UI Semibold", 8),
+        )
+        style.configure(
+            "StatusValue.TLabel",
+            background="#0e131a",
+            foreground=status,
+            font=("Segoe UI Semibold", 8),
+        )
+
+        style.configure(
+            "SectionTitle.TLabel",
+            background=panel,
+            foreground=fg,
+            font=("Segoe UI Semibold", 12),
+        )
+        style.configure(
+            "SearchLabel.TLabel",
+            background=panel,
+            foreground=muted,
+            font=("Segoe UI", 8),
+        )
+        style.configure(
+            "Search.TEntry",
+            fieldbackground=field,
+            foreground=fg,
+            insertcolor=fg,
+            bordercolor=border,
+            lightcolor=border,
+            darkcolor=border,
+            padding=(9, 6),
+        )
+
+        style.configure(
+            "Enterprise.Treeview",
+            background="#0d131a",
+            fieldbackground="#0d131a",
+            foreground="#d7dee8",
+            borderwidth=0,
+            rowheight=36,
+            font=("Segoe UI", 9),
+        )
+        style.configure(
+            "Enterprise.Treeview.Heading",
+            background="#151c25",
+            foreground="#99a6b8",
+            bordercolor=border_soft,
+            relief="flat",
+            padding=(10, 9),
+            font=("Segoe UI Semibold", 8),
+        )
+        style.map(
+            "Enterprise.Treeview",
             background=[("selected", selected)],
             foreground=[("selected", "#ffffff")],
         )
         style.map(
-            "Modern.Treeview.Heading",
-            background=[("active", hover)],
+            "Enterprise.Treeview.Heading",
+            background=[("active", "#1a2330")],
+        )
+
+        style.configure(
+            "InspectorTitle.TLabel",
+            background=inspector,
+            foreground=fg,
+            font=("Segoe UI Semibold", 11),
+        )
+        style.configure(
+            "InspectorKey.TLabel",
+            background=inspector,
+            foreground=muted,
+            font=("Segoe UI Semibold", 8),
+        )
+        style.configure(
+            "InspectorValue.TLabel",
+            background=inspector,
+            foreground=fg,
+            font=("Segoe UI", 10),
+        )
+        style.configure(
+            "PrimaryAction.TButton",
+            background=accent,
+            foreground="#ffffff",
+            bordercolor=accent,
+            padding=(10, 7),
+            font=("Segoe UI Semibold", 9),
+        )
+        style.map(
+            "PrimaryAction.TButton",
+            background=[("active", accent_hover), ("pressed", accent_hover)],
+            foreground=[("disabled", "#697687")],
+        )
+        style.configure(
+            "Inspector.TButton",
+            background="#151c25",
+            foreground=fg,
+            bordercolor=border,
+            lightcolor=border,
+            darkcolor=border,
+            padding=(10, 7),
+            font=("Segoe UI", 9),
+        )
+        style.map(
+            "Inspector.TButton",
+            background=[("active", hover), ("pressed", hover)],
+            foreground=[("disabled", "#697687")],
         )
 
         style.configure(
             "Accent.Horizontal.TProgressbar",
-            troughcolor=field,
+            troughcolor="#0d131a",
             background=accent,
-            bordercolor=field,
+            bordercolor="#0d131a",
             lightcolor=accent,
             darkcolor=accent,
         )
-        style.configure("TSeparator", background=border)
+        style.configure("TSeparator", background=border_soft)
 
         for menu in (self.language_menu, self.interface_menu, self.context_menu):
             menu.configure(
-                background=raised,
+                background="#151c25",
                 foreground=fg,
                 activebackground=selected,
                 activeforeground="#ffffff",
