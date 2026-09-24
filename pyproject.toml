@@ -19,7 +19,7 @@ dependencies = [
 
 [project.scripts]
 netscanpy = "netscanpy.cli:main"
-netscanpy-gui = "netscanpy.gui_modern:main"
+netscanpy-gui = "netscanpy.gui_auto:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/netscanpy"]
