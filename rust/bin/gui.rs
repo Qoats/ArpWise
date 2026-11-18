@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::net::Ipv4Addr;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -30,13 +30,35 @@ use arpwise::{
 /// The splash screen stays at least this long, and at most `SPLASH_MAX`
 /// seconds if the first scan is slow.
 const SPLASH_MIN: f32 = 5.0;
+
+/// Accent colours offered in the settings.
+const ACCENTS: [(&str, Color32); 6] = [
+    ("Bleu", Color32::from_rgb(0x2f, 0x7d, 0xf4)),
+    ("Violet", Color32::from_rgb(0x8b, 0x5c, 0xf6)),
+    ("Vert", Color32::from_rgb(0x1f, 0xb5, 0x6a)),
+    ("Orange", Color32::from_rgb(0xf0, 0x8a, 0x1c)),
+    ("Rose", Color32::from_rgb(0xe8, 0x4f, 0x9a)),
+    ("Cyan", Color32::from_rgb(0x12, 0xb0, 0xc9)),
+];
+
+static ACCENT_RGB: AtomicU32 = AtomicU32::new(0x2f7df4);
+
+fn accent() -> Color32 {
+    let v = ACCENT_RGB.load(Ordering::Relaxed);
+    Color32::from_rgb((v >> 16) as u8, (v >> 8) as u8, v as u8)
+}
+
+fn set_accent(index: usize) {
+    let color = ACCENTS.get(index).map_or(DEFAULT_ACCENT, |(_, c)| *c);
+    let v = ((color.r() as u32) << 16) | ((color.g() as u32) << 8) | color.b() as u32;
+    ACCENT_RGB.store(v, Ordering::Relaxed);
+}
 const SPLASH_MAX: f32 = 20.0;
 
 const BG: Color32 = Color32::from_rgb(0x0d, 0x13, 0x1b);
 const PANEL: Color32 = Color32::from_rgb(0x11, 0x18, 0x21);
 const CARD: Color32 = Color32::from_rgb(0x15, 0x1f, 0x2b);
-const BORDER: Color32 = Color32::from_rgb(0x2c, 0x3a, 0x4b);
-const ACCENT: Color32 = Color32::from_rgb(0x2f, 0x7d, 0xf4);
+const DEFAULT_ACCENT: Color32 = Color32::from_rgb(0x2f, 0x7d, 0xf4);
 const WARN: Color32 = Color32::from_rgb(0xf5, 0xb9, 0x42);
 const GOOD: Color32 = Color32::from_rgb(0x3f, 0xb9, 0x50);
 const BAD: Color32 = Color32::from_rgb(0xf0, 0x5d, 0x5e);
@@ -98,6 +120,27 @@ enum Tab {
 }
 
 #[derive(Clone, Copy)]
+enum MenuAct {
+    ExportCsv,
+    ExportJson,
+    Quit,
+    Rescan,
+    UpdateVendors,
+    WolDialog,
+    HostTool,
+    Shortcuts,
+    About,
+    OpenData,
+    ResetSettings,
+}
+
+#[derive(Default)]
+struct HostTool {
+    ip: String,
+    ports: String,
+}
+
+#[derive(Clone, Copy)]
 enum Action {
     CopyIp,
     CopyMac,
@@ -135,6 +178,10 @@ struct App {
     latency_history: HashMap<String, Vec<f64>>,
     scan_started: Instant,
     scan_secs: f64,
+    wol_dialog: Option<String>,
+    host_dialog: Option<HostTool>,
+    show_shortcuts: bool,
+    show_about: bool,
     splash_start: Instant,
     splash_done: bool,
     splash_centered: bool,
@@ -156,8 +203,11 @@ struct App {
 impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let settings = load_settings();
+        set_accent(settings.accent);
         apply_style(&cc.egui_ctx, settings.dark_theme);
         let (logo, splash_bg) = load_logo(&cc.egui_ctx);
+        let (show_splash, scan_on_start, scale) =
+            (settings.show_splash, settings.scan_on_start, settings.ui_scale);
         let (tx, rx) = channel();
         let local = local_network_info();
         let mut app = Self {
@@ -180,8 +230,12 @@ impl App {
             latency_history: HashMap::new(),
             scan_started: Instant::now(),
             scan_secs: 0.0,
+            wol_dialog: None,
+            host_dialog: None,
+            show_shortcuts: false,
+            show_about: false,
             splash_start: Instant::now(),
-            splash_done: false,
+            splash_done: !show_splash,
             splash_centered: false,
             splash_closing: 0,
             logo,
@@ -200,7 +254,29 @@ impl App {
             output: None,
         };
         app.refresh_public(&cc.egui_ctx);
-        app.start_scan(&cc.egui_ctx);
+        if scan_on_start {
+            app.start_scan(&cc.egui_ctx);
+        }
+        if !show_splash {
+            cc.egui_ctx.set_zoom_factor(scale);
+        }
+
+        // Test hooks, compiled into debug builds only.
+        #[cfg(debug_assertions)]
+        {
+            match std::env::var("ARPWISE_TAB").as_deref() {
+                Ok("settings") => app.tab = Tab::Settings,
+                Ok("network") => app.tab = Tab::Network,
+                _ => {}
+            }
+            match std::env::var("ARPWISE_DIALOG").as_deref() {
+                Ok("about") => app.show_about = true,
+                Ok("shortcuts") => app.show_shortcuts = true,
+                Ok("tools") => app.host_dialog = Some(HostTool::default()),
+                Ok("wol") => app.wol_dialog = Some(String::new()),
+                _ => {}
+            }
+        }
         app
     }
 
@@ -231,6 +307,7 @@ impl App {
         self.status = format!("Analyse de {network}…");
 
         let (tx, ctx, done) = (self.tx.clone(), ctx.clone(), self.done.clone());
+        let ping_timeout = self.settings.ping_timeout;
         std::thread::spawn(move || {
             let report = {
                 let ctx = ctx.clone();
@@ -240,7 +317,7 @@ impl App {
                 }
             };
             let result = scan_network(&network, 1.0, Some(&report)).map(|mut devices| {
-                ping_all(&mut devices, 1.0);
+                ping_all(&mut devices, ping_timeout);
                 let (new_macs, history) = record_scan(&devices);
                 ScanOutput { devices, new_macs, history }
             });
@@ -414,7 +491,7 @@ impl App {
                 let keep = match self.filter {
                     Filter::All => true,
                     Filter::New => self.is_new(d),
-                    Filter::Slow => row.online && d.latency_ms.is_some_and(|ms| ms >= 50.0),
+                    Filter::Slow => row.online && d.latency_ms.is_some_and(|ms| ms >= self.settings.slow_ms),
                     Filter::NoPing => row.online && d.latency_ms.is_none(),
                 };
                 keep && (query.is_empty()
@@ -459,23 +536,176 @@ impl App {
     }
 
     fn export(&mut self) {
+        self.export_as(None);
+    }
+
+    /// Save the online devices; `ext` picks the format ("csv" or "json").
+    fn export_as(&mut self, ext: Option<&str>) {
         let devices = self.online_devices();
         if devices.is_empty() {
             self.status = "Aucun appareil à exporter.".into();
             return;
         }
-        let Some(path) = rfd::FileDialog::new()
-            .set_file_name("arpwise.csv")
-            .add_filter("CSV", &["csv"])
-            .add_filter("JSON", &["json"])
-            .save_file()
-        else {
+        let mut dialog = rfd::FileDialog::new();
+        dialog = match ext {
+            Some("json") => dialog.set_file_name("arpwise.json").add_filter("JSON", &["json"]),
+            Some(_) => dialog.set_file_name("arpwise.csv").add_filter("CSV", &["csv"]),
+            None => dialog
+                .set_file_name("arpwise.csv")
+                .add_filter("CSV", &["csv"])
+                .add_filter("JSON", &["json"]),
+        };
+        let Some(path) = dialog.save_file() else {
             return;
         };
         self.status = match export_devices(&devices, &path, &self.labels) {
             Ok(()) => format!("{} appareil(s) exporté(s) : {}", devices.len(), path.display()),
             Err(error) => error,
         };
+    }
+
+    fn update_vendors_async(&mut self, ctx: &egui::Context) {
+        if self.busy {
+            return;
+        }
+        self.busy = true;
+        self.status = "Téléchargement de la base des fabricants…".into();
+        let (tx, ctx) = (self.tx.clone(), ctx.clone());
+        std::thread::spawn(move || {
+            let _ = tx.send(Msg::Vendors(update_vendors()));
+            ctx.request_repaint();
+        });
+    }
+
+    /// Apply and save a settings change.
+    fn settings_changed(&mut self, ctx: &egui::Context, before: &Settings) {
+        if self.settings == *before {
+            return;
+        }
+        set_accent(self.settings.accent);
+        if self.settings.dark_theme != before.dark_theme || self.settings.accent != before.accent {
+            apply_style(ctx, self.settings.dark_theme);
+        }
+        if self.settings.ui_scale != before.ui_scale {
+            ctx.set_zoom_factor(self.settings.ui_scale);
+        }
+        if self.settings.always_on_top != before.always_on_top {
+            ctx.send_viewport_cmd(egui::ViewportCommand::WindowLevel(if self.settings.always_on_top {
+                egui::WindowLevel::AlwaysOnTop
+            } else {
+                egui::WindowLevel::Normal
+            }));
+        }
+        save_settings(&self.settings);
+    }
+
+    fn menu_bar(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        let before = self.settings.clone();
+        let mut act: Option<MenuAct> = None;
+
+        egui::MenuBar::new().ui(ui, |ui| {
+            ui.menu_button("Fichier", |ui| {
+                if ui.button("Exporter en CSV…").clicked() {
+                    act = Some(MenuAct::ExportCsv);
+                }
+                if ui.button("Exporter en JSON…").clicked() {
+                    act = Some(MenuAct::ExportJson);
+                }
+                ui.separator();
+                if ui.button("Quitter").clicked() {
+                    act = Some(MenuAct::Quit);
+                }
+            });
+
+            ui.menu_button("Affichage", |ui| {
+                ui.radio_value(&mut self.view, View::List, "Liste");
+                ui.radio_value(&mut self.view, View::Map, "Carte");
+                ui.separator();
+                ui.radio_value(&mut self.settings.dark_theme, true, "Thème sombre");
+                ui.radio_value(&mut self.settings.dark_theme, false, "Thème clair");
+                ui.separator();
+                ui.menu_button("Zoom", |ui| {
+                    for scale in [0.85_f32, 1.0, 1.15, 1.3, 1.5] {
+                        ui.radio_value(
+                            &mut self.settings.ui_scale,
+                            scale,
+                            format!("{:.0} %", scale * 100.0),
+                        );
+                    }
+                });
+                ui.menu_button("Colonnes", |ui| {
+                    ui.checkbox(&mut self.settings.col_mac, "Adresse MAC");
+                    ui.checkbox(&mut self.settings.col_vendor, "Fabricant");
+                    ui.checkbox(&mut self.settings.col_type, "Type");
+                    ui.checkbox(&mut self.settings.col_host, "Nom d’hôte");
+                    ui.checkbox(&mut self.settings.col_latency, "Latence");
+                    ui.checkbox(&mut self.settings.col_label, "Étiquette");
+                });
+                ui.separator();
+                ui.checkbox(&mut self.settings.compact, "Lignes compactes");
+                ui.checkbox(&mut self.settings.show_offline, "Appareils hors ligne");
+                ui.checkbox(&mut self.settings.always_on_top, "Toujours au premier plan");
+            });
+
+            ui.menu_button("Outils", |ui| {
+                if ui.button("Rescanner le réseau   F5").clicked() {
+                    act = Some(MenuAct::Rescan);
+                }
+                if ui.button("Mettre à jour les fabricants").clicked() {
+                    act = Some(MenuAct::UpdateVendors);
+                }
+                ui.separator();
+                if ui.button("Réveiller une machine (Wake-on-LAN)…").clicked() {
+                    act = Some(MenuAct::WolDialog);
+                }
+                if ui.button("Ping, traceroute, ports d’une adresse…").clicked() {
+                    act = Some(MenuAct::HostTool);
+                }
+                ui.separator();
+                if ui.button("Ouvrir le dossier des données").clicked() {
+                    act = Some(MenuAct::OpenData);
+                }
+                if ui.button("Réinitialiser les réglages").clicked() {
+                    act = Some(MenuAct::ResetSettings);
+                }
+            });
+
+            ui.menu_button("Aide", |ui| {
+                if ui.button("Raccourcis clavier").clicked() {
+                    act = Some(MenuAct::Shortcuts);
+                }
+                if ui.button("À propos d’ArpWise").clicked() {
+                    act = Some(MenuAct::About);
+                }
+            });
+        });
+
+        self.settings_changed(ctx, &before);
+
+        match act {
+            Some(MenuAct::ExportCsv) => self.export_as(Some("csv")),
+            Some(MenuAct::ExportJson) => self.export_as(Some("json")),
+            Some(MenuAct::Quit) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+            Some(MenuAct::Rescan) => self.start_scan(ctx),
+            Some(MenuAct::UpdateVendors) => self.update_vendors_async(ctx),
+            Some(MenuAct::WolDialog) => self.wol_dialog = Some(String::new()),
+            Some(MenuAct::HostTool) => {
+                self.host_dialog = Some(HostTool {
+                    ip: self.selected().map(|r| r.device.ip.to_string()).unwrap_or_default(),
+                    ports: String::new(),
+                })
+            }
+            Some(MenuAct::Shortcuts) => self.show_shortcuts = true,
+            Some(MenuAct::About) => self.show_about = true,
+            Some(MenuAct::OpenData) => open_folder(&config_dir()),
+            Some(MenuAct::ResetSettings) => {
+                let before = self.settings.clone();
+                self.settings = Settings::default();
+                self.view = View::List;
+                self.settings_changed(ctx, &before);
+            }
+            None => {}
+        }
     }
 
     fn do_action(&mut self, ctx: &egui::Context, action: Action, device: &Device) {
@@ -527,7 +757,7 @@ impl App {
                     .strong()
                     .color(Color32::WHITE),
             )
-            .fill(ACCENT)
+            .fill(accent())
             .min_size(egui::vec2(96.0, 28.0));
             if ui.add_enabled(!self.scanning, scan).clicked() {
                 self.start_scan(ctx);
@@ -576,7 +806,7 @@ impl App {
             card(ui, "En ligne", &online.len().to_string(), GOOD);
             card(ui, "Nouveaux", &self.new_macs.len().to_string(), WARN);
             card(ui, "Hors ligne", &offline.to_string(), muted(ui));
-            card(ui, "Latence moyenne", &average, ACCENT);
+            card(ui, "Latence moyenne", &average, accent());
         });
     }
 
@@ -584,11 +814,12 @@ impl App {
         self.stats(ui);
         ui.add_space(8.0);
 
+        let slow_label = format!("Lents (≥ {:.0} ms)", self.settings.slow_ms);
         ui.horizontal(|ui| {
             for (filter, text) in [
                 (Filter::All, "Tous"),
                 (Filter::New, "Nouveaux"),
-                (Filter::Slow, "Lents (≥ 50 ms)"),
+                (Filter::Slow, slow_label.as_str()),
                 (Filter::NoPing, "Sans réponse au ping"),
             ] {
                 ui.selectable_value(&mut self.filter, filter, text);
@@ -647,45 +878,58 @@ impl App {
         let mut sort_request: Option<SortBy> = None;
         let mut pending: Option<(Action, Device)> = None;
 
-        let headers = [
-            (SortBy::Ip, "Adresse IP"),
-            (SortBy::Mac, "Adresse MAC"),
-            (SortBy::Vendor, "Fabricant"),
-            (SortBy::Type, "Type"),
-            (SortBy::Host, "Nom d’hôte"),
-            (SortBy::Latency, "Latence"),
-            (SortBy::Label, "Étiquette"),
-            (SortBy::Status, ""),
-        ];
+        let st = self.settings.clone();
+        let row_height = if st.compact { 24.0 } else { 32.0 };
+        let slow = st.slow_ms;
 
-        TableBuilder::new(ui)
+        let mut cols: Vec<(SortBy, &str, Column)> =
+            vec![(SortBy::Ip, "Adresse IP", Column::auto().at_least(100.0))];
+        if st.col_mac {
+            cols.push((SortBy::Mac, "Adresse MAC", Column::auto().at_least(135.0)));
+        }
+        if st.col_vendor {
+            cols.push((SortBy::Vendor, "Fabricant", Column::initial(120.0).at_least(60.0).clip(true)));
+        }
+        if st.col_type {
+            cols.push((SortBy::Type, "Type", Column::auto().at_least(90.0)));
+        }
+        if st.col_host {
+            cols.push((SortBy::Host, "Nom d’hôte", Column::initial(130.0).at_least(60.0).clip(true)));
+        }
+        if st.col_latency {
+            cols.push((SortBy::Latency, "Latence", Column::auto().at_least(80.0)));
+        }
+        if st.col_label {
+            cols.push((SortBy::Label, "Étiquette", Column::initial(110.0).at_least(60.0).clip(true)));
+        }
+        cols.push((SortBy::Status, "", Column::remainder().at_least(70.0)));
+
+        let mut builder = TableBuilder::new(ui)
             .striped(true)
             .sense(egui::Sense::click())
-            .column(Column::auto().at_least(110.0))
-            .column(Column::auto().at_least(140.0))
-            .column(Column::initial(160.0).at_least(80.0).clip(true))
-            .column(Column::auto().at_least(100.0))
-            .column(Column::initial(150.0).at_least(80.0).clip(true))
-            .column(Column::auto().at_least(80.0))
-            .column(Column::remainder().at_least(80.0).clip(true))
-            .column(Column::auto().at_least(90.0))
-            .header(26.0, |mut header| {
-                for (column, title) in headers {
+            .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
+        for (_, _, column) in &cols {
+            builder = builder.column(*column);
+        }
+
+        builder
+            .header(28.0, |mut header| {
+                for (column, title, _) in &cols {
                     header.col(|ui| {
-                        let arrow = if self.sort == column {
+                        let arrow = if self.sort == *column {
                             if self.sort_desc { " ▼" } else { " ▲" }
                         } else {
                             ""
                         };
                         let text = RichText::new(format!("{title}{arrow}")).strong().color(muted(ui));
                         if ui.add(egui::Label::new(text).sense(egui::Sense::click())).clicked() {
-                            sort_request = Some(column);
+                            sort_request = Some(*column);
                         }
                     });
                 }
             })
             .body(|body| {
-                body.rows(28.0, visible.len(), |mut row| {
+                body.rows(row_height, visible.len(), |mut row| {
                     let item = &self.rows[visible[row.index()]];
                     let device = &item.device;
                     row.set_selected(self.selected_mac.as_deref() == Some(device.mac.as_str()));
@@ -695,42 +939,50 @@ impl App {
                         RichText::new(text).color(color)
                     };
 
-                    row.col(|ui| {
-                        ui.label(dim(ui, &device.ip.to_string()));
-                    });
-                    row.col(|ui| {
-                        ui.label(dim(ui, &device.mac).monospace());
-                    });
-                    row.col(|ui| {
-                        ui.label(dim(ui, &device.vendor));
-                    });
-                    row.col(|ui| {
-                        let color = if item.online { type_color(item.kind) } else { muted(ui) };
-                        ui.label(RichText::new(item.kind.label()).color(color));
-                    });
-                    row.col(|ui| {
-                        let host = if device.hostname.is_empty() { "—" } else { &device.hostname };
-                        ui.label(dim(ui, host));
-                    });
-                    row.col(|ui| {
-                        if item.online {
-                            ui.horizontal(|ui| {
-                                ui.spacing_mut().item_spacing.x = 4.0;
-                                ui.label(RichText::new("●").color(latency_color(device.latency_ms)));
-                                ui.label(device.latency_ms.map_or("—".to_string(), |ms| format!("{ms:.0} ms")));
-                            });
-                        } else {
-                            ui.label(RichText::new("hors ligne").color(muted(ui)));
-                        }
-                    });
-                    row.col(|ui| {
-                        ui.label(get_label(&self.labels, &device.mac));
-                    });
-                    row.col(|ui| {
-                        if self.is_new(device) {
-                            ui.label(RichText::new("NOUVEAU").color(WARN).strong());
-                        }
-                    });
+                    for (column, _, _) in &cols {
+                        row.col(|ui| match *column {
+                            SortBy::Ip => {
+                                ui.label(dim(ui, &device.ip.to_string()));
+                            }
+                            SortBy::Mac => {
+                                ui.label(dim(ui, &device.mac).monospace());
+                            }
+                            SortBy::Vendor => {
+                                ui.label(dim(ui, &device.vendor));
+                            }
+                            SortBy::Type => {
+                                let color = if item.online { type_color(item.kind) } else { muted(ui) };
+                                ui.label(RichText::new(item.kind.label()).color(color));
+                            }
+                            SortBy::Host => {
+                                let host = if device.hostname.is_empty() { "—" } else { &device.hostname };
+                                ui.label(dim(ui, host));
+                            }
+                            SortBy::Latency => {
+                                if item.online {
+                                    ui.horizontal(|ui| {
+                                        ui.spacing_mut().item_spacing.x = 4.0;
+                                        ui.label(
+                                            RichText::new("●").color(latency_color(device.latency_ms, slow)),
+                                        );
+                                        ui.label(
+                                            device.latency_ms.map_or("—".to_string(), |ms| format!("{ms:.0} ms")),
+                                        );
+                                    });
+                                } else {
+                                    ui.label(RichText::new("hors ligne").color(muted(ui)));
+                                }
+                            }
+                            SortBy::Label => {
+                                ui.label(get_label(&self.labels, &device.mac));
+                            }
+                            SortBy::Status => {
+                                if self.is_new(device) {
+                                    ui.label(RichText::new("NOUVEAU").color(WARN).strong());
+                                }
+                            }
+                        });
+                    }
 
                     let response = row.response();
                     if response.clicked() || response.secondary_clicked() {
@@ -786,6 +1038,7 @@ impl App {
         let line = ui.visuals().widgets.noninteractive.bg_stroke.color;
         let text_color = ui.visuals().text_color();
         let weak = muted(ui);
+        let slow = self.settings.slow_ms;
 
         for fraction in [0.35, 0.65, 1.0] {
             painter.circle_stroke(center, radius * fraction, egui::Stroke::new(1.0, line));
@@ -806,8 +1059,8 @@ impl App {
             let distance = match (row.online, row.device.latency_ms) {
                 (false, _) => 1.0,
                 (true, None) => 0.85,
-                (true, Some(ms)) if ms < 20.0 => 0.38,
-                (true, Some(ms)) if ms < 80.0 => 0.68,
+                (true, Some(ms)) if ms < slow * 0.4 => 0.38,
+                (true, Some(ms)) if ms < slow * 1.6 => 0.68,
                 (true, Some(_)) => 0.95,
             };
             let angle = std::f32::consts::TAU * n as f32 / count - std::f32::consts::FRAC_PI_2;
@@ -831,7 +1084,7 @@ impl App {
 
         // Hub.
         let hub_row = hub.map(|i| &self.rows[i]);
-        painter.circle_filled(center, 22.0, ACCENT);
+        painter.circle_filled(center, 22.0, accent());
         painter.text(
             center,
             egui::Align2::CENTER_CENTER,
@@ -855,13 +1108,13 @@ impl App {
         for node in &nodes {
             let row = &self.rows[node.index];
             let selected = self.selected_mac.as_deref() == Some(row.device.mac.as_str());
-            let color = if row.online { latency_color(row.device.latency_ms) } else { Color32::from_gray(0x6a) };
+            let color = if row.online { latency_color(row.device.latency_ms, slow) } else { Color32::from_gray(0x6a) };
 
             if pointer.is_some_and(|p| p.distance(node.pos) < 17.0) {
                 hovered = Some(node.index);
             }
             if selected || hovered == Some(node.index) {
-                painter.circle_stroke(node.pos, 20.0, egui::Stroke::new(2.0, ACCENT));
+                painter.circle_stroke(node.pos, 20.0, egui::Stroke::new(2.0, accent()));
             }
             painter.circle_filled(node.pos, 15.0, color);
             painter.text(
@@ -914,10 +1167,10 @@ impl App {
 
         // Legend.
         let legend = [
-            (GOOD, "< 20 ms"),
-            (WARN, "< 80 ms"),
-            (BAD, "≥ 80 ms"),
-            (Color32::from_gray(0x6a), "hors ligne"),
+            (GOOD, format!("< {:.0} ms", slow * 0.4)),
+            (WARN, format!("< {:.0} ms", slow * 1.6)),
+            (BAD, format!("≥ {:.0} ms", slow * 1.6)),
+            (Color32::from_gray(0x6a), "hors ligne".to_string()),
         ];
         for (n, (color, text)) in legend.iter().enumerate() {
             let y = rect.bottom() - 14.0 - 16.0 * (legend.len() - 1 - n) as f32;
@@ -925,7 +1178,7 @@ impl App {
             painter.text(
                 egui::pos2(rect.left() + 26.0, y),
                 egui::Align2::LEFT_CENTER,
-                *text,
+                text.as_str(),
                 egui::FontId::proportional(11.0),
                 weak,
             );
@@ -1104,70 +1357,291 @@ impl App {
     }
 
     fn settings_tab(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
-        ui.label(RichText::new("Réglages").size(14.0).strong());
-        ui.add_space(8.0);
+        ui.label(RichText::new("Réglages").size(15.0).strong());
+        ui.add_space(6.0);
 
         let before = self.settings.clone();
 
-        ui.label(RichText::new("Thème").color(muted(ui)).small());
-        ui.horizontal(|ui| {
-            ui.selectable_value(&mut self.settings.dark_theme, true, "Sombre");
-            ui.selectable_value(&mut self.settings.dark_theme, false, "Clair");
-        });
-        ui.add_space(8.0);
+        egui::CollapsingHeader::new("Apparence").default_open(true).show(ui, |ui| {
+            ui.label(RichText::new("Thème").color(muted(ui)).small());
+            ui.horizontal(|ui| {
+                ui.selectable_value(&mut self.settings.dark_theme, true, "Sombre");
+                ui.selectable_value(&mut self.settings.dark_theme, false, "Clair");
+            });
+            ui.add_space(6.0);
 
-        ui.label(RichText::new("Scan automatique").color(muted(ui)).small());
-        egui::ComboBox::from_id_salt("auto_scan")
-            .selected_text(match self.settings.auto_scan_secs {
-                0 => "Désactivé".to_string(),
-                s if s < 60 => format!("Toutes les {s} s"),
-                s => format!("Toutes les {} min", s / 60),
-            })
-            .show_ui(ui, |ui| {
-                for (secs, text) in [
-                    (0, "Désactivé"),
-                    (30, "Toutes les 30 s"),
-                    (60, "Toutes les minutes"),
-                    (300, "Toutes les 5 minutes"),
-                    (900, "Toutes les 15 minutes"),
-                ] {
-                    ui.selectable_value(&mut self.settings.auto_scan_secs, secs, text);
+            ui.label(RichText::new("Couleur d’accent").color(muted(ui)).small());
+            ui.horizontal_wrapped(|ui| {
+                for (index, (name, color)) in ACCENTS.iter().enumerate() {
+                    let (rect, response) =
+                        ui.allocate_exact_size(egui::vec2(28.0, 28.0), egui::Sense::click());
+                    ui.painter().circle_filled(rect.center(), 11.0, *color);
+                    if self.settings.accent == index {
+                        ui.painter().circle_stroke(
+                            rect.center(),
+                            14.0,
+                            egui::Stroke::new(2.0, ui.visuals().text_color()),
+                        );
+                    }
+                    if response.on_hover_text(*name).clicked() {
+                        self.settings.accent = index;
+                    }
                 }
             });
-        ui.add_space(8.0);
+            ui.add_space(6.0);
 
-        ui.checkbox(&mut self.settings.show_offline, "Afficher les appareils hors ligne");
+            ui.label(RichText::new("Zoom de l’interface").color(muted(ui)).small());
+            ui.add(
+                egui::Slider::new(&mut self.settings.ui_scale, 0.8..=1.6)
+                    .custom_formatter(|v, _| format!("{:.0} %", v * 100.0))
+                    .step_by(0.05),
+            );
+            ui.add_space(4.0);
+            ui.checkbox(&mut self.settings.compact, "Lignes compactes");
+            ui.checkbox(&mut self.settings.show_offline, "Afficher les appareils hors ligne");
+            ui.checkbox(&mut self.settings.always_on_top, "Toujours au premier plan");
+        });
 
-        ui.add_space(12.0);
-        ui.label(RichText::new("À propos").color(muted(ui)).small());
-        ui.label(format!(
-            "ArpWise {} · Éditeur : {}",
-            env!("CARGO_PKG_VERSION"),
-            env!("CARGO_PKG_AUTHORS")
-        ));
-        ui.add_space(12.0);
-        ui.label(RichText::new("Données").color(muted(ui)).small());
-        ui.add(egui::Label::new(config_dir().display().to_string()).selectable(true).wrap());
-        ui.add_space(6.0);
-        ui.label(
-            RichText::new(if has_vendor_database() {
-                "Base des fabricants : installée"
-            } else {
-                "Base des fabricants : absente (bouton « Fabricants »)"
-            })
-            .color(muted(ui))
-            .small(),
-        );
+        egui::CollapsingHeader::new("Analyse").default_open(true).show(ui, |ui| {
+            ui.label(RichText::new("Scan automatique").color(muted(ui)).small());
+            egui::ComboBox::from_id_salt("auto_scan")
+                .selected_text(match self.settings.auto_scan_secs {
+                    0 => "Désactivé".to_string(),
+                    s if s < 60 => format!("Toutes les {s} s"),
+                    s => format!("Toutes les {} min", s / 60),
+                })
+                .show_ui(ui, |ui| {
+                    for (secs, text) in [
+                        (0, "Désactivé"),
+                        (30, "Toutes les 30 s"),
+                        (60, "Toutes les minutes"),
+                        (300, "Toutes les 5 minutes"),
+                        (900, "Toutes les 15 minutes"),
+                    ] {
+                        ui.selectable_value(&mut self.settings.auto_scan_secs, secs, text);
+                    }
+                });
+            ui.add_space(6.0);
 
-        if self.settings.dark_theme != before.dark_theme {
-            apply_style(ctx, self.settings.dark_theme);
+            ui.label(RichText::new("Délai de réponse du ping").color(muted(ui)).small());
+            ui.add(
+                egui::Slider::new(&mut self.settings.ping_timeout, 0.3..=3.0)
+                    .custom_formatter(|v, _| format!("{v:.1} s"))
+                    .step_by(0.1),
+            );
+            ui.add_space(4.0);
+
+            ui.label(RichText::new("Seuil « appareil lent »").color(muted(ui)).small());
+            ui.add(
+                egui::Slider::new(&mut self.settings.slow_ms, 10.0..=300.0)
+                    .custom_formatter(|v, _| format!("{v:.0} ms"))
+                    .step_by(5.0),
+            );
+            ui.add_space(4.0);
+
+            ui.checkbox(&mut self.settings.scan_on_start, "Scanner au démarrage");
+            ui.checkbox(&mut self.settings.show_splash, "Écran de chargement (5 s min.)")
+                .on_hover_text("Pris en compte au prochain lancement");
+        });
+
+        egui::CollapsingHeader::new("Colonnes du tableau").show(ui, |ui| {
+            ui.checkbox(&mut self.settings.col_mac, "Adresse MAC");
+            ui.checkbox(&mut self.settings.col_vendor, "Fabricant");
+            ui.checkbox(&mut self.settings.col_type, "Type");
+            ui.checkbox(&mut self.settings.col_host, "Nom d’hôte");
+            ui.checkbox(&mut self.settings.col_latency, "Latence");
+            ui.checkbox(&mut self.settings.col_label, "Étiquette");
+        });
+
+        egui::CollapsingHeader::new("Données").show(ui, |ui| {
+            ui.add(egui::Label::new(config_dir().display().to_string()).selectable(true).wrap());
+            ui.label(
+                RichText::new(if has_vendor_database() {
+                    "Base des fabricants : installée"
+                } else {
+                    "Base des fabricants : absente (bouton « Fabricants »)"
+                })
+                .color(muted(ui))
+                .small(),
+            );
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                if ui.button("Ouvrir le dossier").clicked() {
+                    open_folder(&config_dir());
+                }
+                if ui.button("Réinitialiser").clicked() {
+                    self.settings = Settings::default();
+                    self.view = View::List;
+                }
+            });
+        });
+
+        egui::CollapsingHeader::new("À propos").show(ui, |ui| {
+            ui.label(format!(
+                "ArpWise {} · Éditeur : {}",
+                env!("CARGO_PKG_VERSION"),
+                env!("CARGO_PKG_AUTHORS")
+            ));
+            if ui.button("Détails…").clicked() {
+                self.show_about = true;
+            }
+        });
+
+        self.settings_changed(ctx, &before);
+    }
+
+    /// Dialogs for the manual tools (Wake-on-LAN, ping/ports on any address)
+    /// and the help windows.
+    fn tool_dialogs(&mut self, ctx: &egui::Context) {
+        let enter = |ui: &egui::Ui, response: &egui::Response| {
+            response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))
+        };
+
+        // Wake-on-LAN by MAC address.
+        if let Some(mac) = &mut self.wol_dialog {
+            let mut send = false;
+            let mut close = false;
+            egui::Window::new("Wake-on-LAN")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ctx, |ui| {
+                    ui.label("Adresse MAC de la machine à réveiller :");
+                    let response = ui.add(
+                        egui::TextEdit::singleline(mac)
+                            .hint_text("aa:bb:cc:dd:ee:ff")
+                            .desired_width(280.0),
+                    );
+                    ui.add_space(4.0);
+                    ui.horizontal(|ui| {
+                        send = ui.button("Envoyer").clicked() || enter(ui, &response);
+                        close = ui.button("Fermer").clicked();
+                    });
+                });
+            let text = mac.clone();
+            if send {
+                self.status = match wake_on_lan(&text, Ipv4Addr::BROADCAST) {
+                    Ok(()) => format!("Paquet Wake-on-LAN envoyé à {text}"),
+                    Err(error) => error,
+                };
+            }
+            if close {
+                self.wol_dialog = None;
+            }
         }
-        if self.settings.auto_scan_secs != before.auto_scan_secs
-            || self.settings.show_offline != before.show_offline
-            || self.settings.dark_theme != before.dark_theme
-        {
-            save_settings(&self.settings);
+
+        // Ping / traceroute / ports on any address.
+        if let Some(tool) = &mut self.host_dialog {
+            let mut choice: Option<u8> = None;
+            let mut close = false;
+            egui::Window::new("Outils réseau")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ctx, |ui| {
+                    ui.label("Adresse IPv4 :");
+                    ui.add(egui::TextEdit::singleline(&mut tool.ip).hint_text("192.168.1.10").desired_width(280.0));
+                    ui.add_space(4.0);
+                    ui.label("Ports (ex. 22,80,8000-8100) — vide = courants :");
+                    ui.add(egui::TextEdit::singleline(&mut tool.ports).desired_width(280.0));
+                    ui.add_space(6.0);
+                    ui.horizontal(|ui| {
+                        if ui.button("Ping").clicked() {
+                            choice = Some(0);
+                        }
+                        if ui.button("Traceroute").clicked() {
+                            choice = Some(1);
+                        }
+                        if ui.button("Ports").clicked() {
+                            choice = Some(2);
+                        }
+                        close = ui.button("Fermer").clicked();
+                    });
+                });
+            let (ip_text, ports_text) = (tool.ip.trim().to_string(), tool.ports.clone());
+
+            if let Some(choice) = choice {
+                match ip_text.parse::<Ipv4Addr>() {
+                    Err(_) => self.status = format!("Adresse IPv4 invalide : {ip_text}"),
+                    Ok(ip) => match choice {
+                        0 => {
+                            let (program, args) = ping_command(ip);
+                            self.spawn_output(ctx, format!("Ping · {ip}"), move || run_command(program, &args));
+                        }
+                        1 => {
+                            let (program, args) = traceroute_command(ip);
+                            self.spawn_output(ctx, format!("Traceroute · {ip}"), move || {
+                                run_command(program, &args)
+                            });
+                        }
+                        _ => {
+                            let ports = if ports_text.trim().is_empty() {
+                                Ok(COMMON_PORTS.to_vec())
+                            } else {
+                                parse_ports(&ports_text)
+                            };
+                            match ports {
+                                Ok(ports) => self.spawn_output(ctx, format!("Ports · {ip}"), move || {
+                                    let open = scan_ports(ip, &ports, Duration::from_millis(500));
+                                    Ok(format_ports(ip, &open, ports.len()))
+                                }),
+                                Err(error) => self.status = error,
+                            }
+                        }
+                    },
+                }
+            }
+            if close {
+                self.host_dialog = None;
+            }
         }
+
+        egui::Window::new("Raccourcis clavier")
+            .open(&mut self.show_shortcuts)
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ctx, |ui| {
+                egui::Grid::new("shortcuts").num_columns(2).spacing([24.0, 8.0]).show(ui, |ui| {
+                    for (keys, text) in [
+                        ("F5  ou  Ctrl+R", "Rescanner le réseau"),
+                        ("Ctrl+F", "Rechercher"),
+                        ("Ctrl+E", "Exporter la liste"),
+                        ("Clic droit", "Menu d’actions sur un appareil"),
+                        ("Clic sur un titre", "Trier le tableau"),
+                    ] {
+                        ui.label(RichText::new(keys).strong());
+                        ui.label(text);
+                        ui.end_row();
+                    }
+                });
+            });
+
+        egui::Window::new("À propos d’ArpWise")
+            .open(&mut self.show_about)
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ctx, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.add(
+                        egui::Image::new(egui::load::SizedTexture::new(
+                            self.logo.id(),
+                            egui::vec2(270.0, 100.0),
+                        ))
+                        .corner_radius(egui::CornerRadius::same(10)),
+                    );
+                    ui.add_space(8.0);
+                    ui.label(RichText::new("ArpWise").size(20.0).strong());
+                    ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
+                    ui.add_space(6.0);
+                    ui.label("Scanner réseau rapide, sans pilote,");
+                    ui.label("pour Windows et Linux.");
+                    ui.add_space(6.0);
+                    ui.label(format!("Éditeur : {}", env!("CARGO_PKG_AUTHORS")));
+                    ui.label(RichText::new("Licence GPL-3.0").color(muted(ui)).small());
+                });
+            });
     }
 
     fn dialogs(&mut self, ctx: &egui::Context) {
@@ -1235,7 +1709,7 @@ impl App {
 
 fn type_color(kind: DeviceType) -> Color32 {
     match kind {
-        DeviceType::Router => ACCENT,
+        DeviceType::Router => accent(),
         DeviceType::NetworkGear => Color32::from_rgb(0x2d, 0xb7, 0xb0),
         DeviceType::Computer => Color32::from_rgb(0x6c, 0xa6, 0xe8),
         DeviceType::Mobile => Color32::from_rgb(0xb0, 0x8a, 0xf0),
@@ -1267,7 +1741,7 @@ fn sparkline(ui: &mut egui::Ui, series: &[f64]) {
             egui::pos2(x, y)
         })
         .collect();
-    painter.add(egui::Shape::line(points, egui::Stroke::new(1.5, ACCENT)));
+    painter.add(egui::Shape::line(points, egui::Stroke::new(1.5, accent())));
     ui.label(
         RichText::new(format!("min {min:.0} · moy {avg:.0} · max {max:.0} ms · {} mesures", series.len()))
             .color(muted(ui))
@@ -1291,17 +1765,43 @@ fn load_logo(ctx: &egui::Context) -> (egui::TextureHandle, Color32) {
     (texture, background)
 }
 
+/// Put the window in the middle of the screen it is on.
+fn center_window(ctx: &egui::Context) {
+    if let Some(command) = egui::ViewportCommand::center_on_screen(ctx) {
+        ctx.send_viewport_cmd(command);
+    }
+}
+
 fn muted(ui: &egui::Ui) -> Color32 {
     ui.visuals().weak_text_color()
 }
 
-fn latency_color(latency: Option<f64>) -> Color32 {
+/// Green below 40 % of the "slow" threshold, orange below 160 %, red above.
+fn latency_color(latency: Option<f64>, slow: f64) -> Color32 {
     match latency {
         None => Color32::from_gray(0x80),
-        Some(ms) if ms < 20.0 => GOOD,
-        Some(ms) if ms < 80.0 => WARN,
+        Some(ms) if ms < slow * 0.4 => GOOD,
+        Some(ms) if ms < slow * 1.6 => WARN,
         Some(_) => BAD,
     }
+}
+
+fn open_folder(path: &std::path::Path) {
+    let program = if cfg!(windows) { "explorer" } else { "xdg-open" };
+    let _ = std::process::Command::new(program).arg(path).spawn();
+}
+
+/// Rounded card used for the main panels.
+fn panel_frame(ui: &egui::Ui) -> egui::Frame {
+    let dark = ui.visuals().dark_mode;
+    egui::Frame::new()
+        .fill(if dark { PANEL } else { Color32::WHITE })
+        .corner_radius(egui::CornerRadius::same(14))
+        .stroke(egui::Stroke::new(
+            1.0,
+            if dark { Color32::from_rgb(0x22, 0x2e, 0x3d) } else { Color32::from_rgb(0xd8, 0xdf, 0xe9) },
+        ))
+        .inner_margin(egui::Margin::same(14))
 }
 
 /// `2026-11-18T14:03:09` -> `18/11/2026 14:03`.
@@ -1324,9 +1824,10 @@ fn field(ui: &mut egui::Ui, name: &str, value: &str) {
 
 fn card(ui: &mut egui::Ui, title: &str, value: &str, color: Color32) {
     egui::Frame::new()
-        .fill(if ui.visuals().dark_mode { CARD } else { Color32::from_rgb(0xf0, 0xf3, 0xf7) })
+        .fill(if ui.visuals().dark_mode { CARD } else { Color32::from_rgb(0xf0, 0xf3, 0xf8) })
+        .corner_radius(egui::CornerRadius::same(12))
         .stroke(egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color))
-        .inner_margin(egui::Margin::symmetric(14, 8))
+        .inner_margin(egui::Margin::symmetric(16, 10))
         .show(ui, |ui| {
             ui.vertical(|ui| {
                 ui.set_min_width(110.0);
@@ -1337,20 +1838,35 @@ fn card(ui: &mut egui::Ui, title: &str, value: &str, color: Color32) {
 }
 
 fn apply_style(ctx: &egui::Context, dark: bool) {
+    let acc = accent();
     let mut visuals = if dark { egui::Visuals::dark() } else { egui::Visuals::light() };
+
     if dark {
-        visuals.panel_fill = PANEL;
-        visuals.window_fill = BG;
+        visuals.panel_fill = BG;
+        visuals.window_fill = PANEL;
         visuals.extreme_bg_color = Color32::from_rgb(0x0a, 0x11, 0x19);
-        visuals.faint_bg_color = Color32::from_rgb(0x13, 0x1c, 0x27);
-        visuals.selection.bg_fill = Color32::from_rgb(0x1f, 0x51, 0x85);
-        visuals.widgets.inactive.bg_fill = Color32::from_rgb(0x17, 0x21, 0x2d);
-        visuals.widgets.inactive.weak_bg_fill = Color32::from_rgb(0x17, 0x21, 0x2d);
-        visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, BORDER);
+        visuals.faint_bg_color = Color32::from_rgb(0x15, 0x1e, 0x29);
+        let soft = Color32::from_rgb(0x1a, 0x25, 0x32);
+        visuals.widgets.inactive.bg_fill = soft;
+        visuals.widgets.inactive.weak_bg_fill = soft;
+        visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, Color32::from_rgb(0x2a, 0x37, 0x48));
+        visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(1.0, Color32::from_rgb(0x22, 0x2e, 0x3d));
+        let hover = Color32::from_rgb(0x23, 0x31, 0x42);
+        visuals.widgets.hovered.bg_fill = hover;
+        visuals.widgets.hovered.weak_bg_fill = hover;
     } else {
-        visuals.selection.bg_fill = Color32::from_rgb(0xbf, 0xd8, 0xfb);
+        visuals.panel_fill = Color32::from_rgb(0xea, 0xee, 0xf4);
+        visuals.window_fill = Color32::WHITE;
+        visuals.extreme_bg_color = Color32::WHITE;
+        visuals.faint_bg_color = Color32::from_rgb(0xf3, 0xf6, 0xfa);
+        visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, Color32::from_rgb(0xc4, 0xcd, 0xda));
+        visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(1.0, Color32::from_rgb(0xd8, 0xdf, 0xe9));
     }
-    visuals.hyperlink_color = ACCENT;
+
+    visuals.selection.bg_fill = acc.gamma_multiply(if dark { 0.45 } else { 0.30 });
+    visuals.selection.stroke = egui::Stroke::new(1.0, acc);
+    visuals.hyperlink_color = acc;
+
     for widget in [
         &mut visuals.widgets.noninteractive,
         &mut visuals.widgets.inactive,
@@ -1358,10 +1874,18 @@ fn apply_style(ctx: &egui::Context, dark: bool) {
         &mut visuals.widgets.active,
         &mut visuals.widgets.open,
     ] {
-        widget.corner_radius = egui::CornerRadius::ZERO;
+        widget.corner_radius = egui::CornerRadius::same(8);
     }
-    visuals.window_corner_radius = egui::CornerRadius::ZERO;
+    visuals.window_corner_radius = egui::CornerRadius::same(14);
+    visuals.menu_corner_radius = egui::CornerRadius::same(10);
     ctx.set_visuals(visuals);
+
+    ctx.all_styles_mut(|style| {
+        style.spacing.item_spacing = egui::vec2(8.0, 7.0);
+        style.spacing.button_padding = egui::vec2(12.0, 6.0);
+        style.spacing.interact_size.y = 30.0;
+        style.spacing.window_margin = egui::Margin::same(16);
+    });
 }
 
 impl eframe::App for App {
@@ -1369,41 +1893,43 @@ impl eframe::App for App {
         let ctx = ui.ctx().clone();
         self.poll_messages();
 
+        // Centre the window on screen as soon as it exists.
+        if !self.splash_centered {
+            self.splash_centered = true;
+            center_window(&ctx);
+        }
+
         // Loading screen: a small window the size of the logo, shown at least
         // SPLASH_MIN seconds and until the first scan is done (SPLASH_MAX cap).
-        // Then the real window opens.
+        // Then the real window opens, centred on screen.
         if !self.splash_done {
             let t = self.splash_start.elapsed().as_secs_f32();
-
-            if !self.splash_centered {
-                self.splash_centered = true;
-                if let Some(command) = egui::ViewportCommand::center_on_screen(&ctx) {
-                    ctx.send_viewport_cmd(command);
-                }
-            }
 
             if self.splash_closing == 0 && t >= SPLASH_MIN && (!self.scanning || t >= SPLASH_MAX) {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Decorations(true));
                 ctx.send_viewport_cmd(egui::ViewportCommand::Resizable(true));
                 ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(egui::vec2(1040.0, 600.0)));
                 ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(1280.0, 760.0)));
-                if let Some(command) = egui::ViewportCommand::center_on_screen(&ctx) {
-                    ctx.send_viewport_cmd(command);
-                }
-                self.splash_closing = 4;
+                self.splash_closing = 14;
             }
 
             if self.splash_closing > 0 {
-                // Blank frames while the window changes size.
+                // Blank frames while the window grows. Centring has to wait
+                // until it has its new size, so it is done a few frames later
+                // (and once more to be safe).
                 self.splash_closing -= 1;
+                if self.splash_closing == 8 || self.splash_closing == 3 {
+                    center_window(&ctx);
+                }
                 if self.splash_closing == 0 {
                     self.splash_done = true;
                     self.last_scan = Instant::now();
+                    ctx.set_zoom_factor(self.settings.ui_scale);
                 }
                 egui::CentralPanel::default()
                     .frame(egui::Frame::new().fill(self.splash_bg))
                     .show(ui, |_| {});
-                ctx.request_repaint();
+                ctx.request_repaint_after(Duration::from_millis(25));
                 return;
             }
 
@@ -1439,24 +1965,54 @@ impl eframe::App for App {
             ctx.request_repaint_after(Duration::from_secs(1));
         }
 
-        egui::Panel::top("top").show(ui, |ui| {
-            ui.add_space(6.0);
-            self.top_bar(ui, &ctx);
-            ui.add_space(6.0);
-        });
+        let bg = ui.visuals().panel_fill;
 
-        egui::Panel::bottom("status").show(ui, |ui| {
-            ui.label(RichText::new(&self.status).color(muted(ui)));
-        });
+        egui::Panel::top("menu")
+            .frame(egui::Frame::new().fill(bg).inner_margin(egui::Margin::symmetric(10, 4)))
+            .show(ui, |ui| self.menu_bar(ui, &ctx));
+
+        egui::Panel::top("toolbar")
+            .frame(egui::Frame::new().fill(bg).inner_margin(egui::Margin::symmetric(14, 8)))
+            .show(ui, |ui| self.top_bar(ui, &ctx));
+
+        egui::Panel::bottom("status")
+            .frame(egui::Frame::new().fill(bg).inner_margin(egui::Margin::symmetric(16, 6)))
+            .show(ui, |ui| {
+                ui.label(RichText::new(&self.status).color(muted(ui)).small());
+            });
 
         egui::Panel::right("inspector")
-            .exact_size(330.0)
+            .exact_size(372.0)
             .resizable(false)
-            .show(ui, |ui| self.side_panel(ui, &ctx));
+            .frame(egui::Frame::new().fill(bg).inner_margin(egui::Margin {
+                left: 0,
+                right: 12,
+                top: 4,
+                bottom: 4,
+            }))
+            .show(ui, |ui| {
+                panel_frame(ui).show(ui, |ui| {
+                    ui.set_min_size(ui.available_size());
+                    self.side_panel(ui, &ctx);
+                });
+            });
 
-        egui::CentralPanel::default().show(ui, |ui| self.table(ui, &ctx));
+        egui::CentralPanel::default()
+            .frame(egui::Frame::new().fill(bg).inner_margin(egui::Margin {
+                left: 12,
+                right: 12,
+                top: 4,
+                bottom: 4,
+            }))
+            .show(ui, |ui| {
+                panel_frame(ui).show(ui, |ui| {
+                    ui.set_min_size(ui.available_size());
+                    self.table(ui, &ctx);
+                });
+            });
 
-        self.dialogs(&ctx);
+        self.dialogs(&ctx);        self.dialogs(&ctx);
+        self.tool_dialogs(&ctx);
 
         // Remember the chosen view.
         let map_view = self.view == View::Map;
@@ -1468,17 +2024,27 @@ impl eframe::App for App {
 }
 
 fn main() -> eframe::Result {
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("ArpWise")
-            .with_icon(
-                eframe::icon_data::from_png_bytes(include_bytes!("../../assets/icon.png"))
-                    .expect("valid embedded icon"),
-            )
+    let settings = load_settings();
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_title("ArpWise")
+        .with_icon(
+            eframe::icon_data::from_png_bytes(include_bytes!("../../assets/icon.png"))
+                .expect("valid embedded icon"),
+        );
+    viewport = if settings.show_splash {
+        // Small borderless window the size of the logo; it grows afterwards.
+        viewport
             .with_decorations(false)
             .with_resizable(false)
-            .with_inner_size([450.0, 166.0]),
-        ..Default::default()
+            .with_inner_size([450.0, 166.0])
+    } else {
+        viewport
+            .with_inner_size([1280.0, 760.0])
+            .with_min_inner_size([1040.0, 600.0])
     };
+    if settings.always_on_top {
+        viewport = viewport.with_always_on_top();
+    }
+    let options = eframe::NativeOptions { viewport, ..Default::default() };
     eframe::run_native("ArpWise", options, Box::new(|cc| Ok(Box::new(App::new(cc)))))
 }

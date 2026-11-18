@@ -26,6 +26,9 @@ Written in Rust. One small executable. No Npcap, no Wireshark, no admin tools to
 - Latency graph per device, kept for the session
 - Search, filters (new, slow, no ping reply, by type), sortable columns, custom labels
 - Right-click actions: ping, traceroute, port scan, open in browser, Wake-on-LAN, copy IP or MAC
+- Rounded modern interface with menus (File, View, Tools, Help), dark or light theme and 6 accent colours
+- Many settings: zoom, compact rows, column visibility, ping timeout, "slow" threshold, auto-scan, scan at start, loading screen, always on top
+- Manual tools: Wake-on-LAN by MAC address, ping / traceroute / port scan of any address
 - Keyboard shortcuts: `F5` or `Ctrl+R` rescan, `Ctrl+F` search, `Ctrl+E` export
 - Custom TCP port scan (`22,80,8000-8100`)
 - Export to CSV or JSON
