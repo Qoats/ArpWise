@@ -1,0 +1,43 @@
+[package]
+name = "netscanpy"
+version = "0.4.0"
+edition = "2024"
+description = "Simple open-source local network scanner."
+license = "GPL-3.0-only"
+authors = ["evergreen-stack"]
+readme = "README.md"
+
+[dependencies]
+arboard = "3.7.0"
+chrono = "0.4.45"
+clap = { version = "4.6.8", features = ["derive"] }
+csv = "1.4.0"
+dirs = "7.0.0"
+dns-lookup = "4.0.2"
+eframe = "0.37.0"
+egui_extras = "0.37.0"
+if-addrs = "0.15.0"
+rfd = "0.18.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+ureq = "3.5.2"
+
+[target."cfg(windows)".dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_NetworkManagement_IpHelper", "Win32_Foundation", "Win32_Networking_WinSock"] }
+
+[lib]
+name = "netscanpy"
+path = "rust/lib.rs"
+
+[[bin]]
+name = "netscanpy"
+path = "rust/bin/cli.rs"
+
+[[bin]]
+name = "netscanpy-gui"
+path = "rust/bin/gui.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
