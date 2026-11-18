@@ -1,0 +1,150 @@
+name: Build and package
+
+# Run it by hand from the Actions tab, or push a tag such as v0.5.0 to build
+# everything and attach the files to a GitHub release.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ---------------------------------------------------------------- Windows --
+  windows:
+    name: Windows ${{ matrix.label }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: x64,   target: x86_64-pc-windows-msvc,  wix_arch: x64 }
+          - { label: x86,   target: i686-pc-windows-msvc,    wix_arch: x86 }
+          - { label: arm64, target: aarch64-pc-windows-msvc, wix_arch: arm64 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Read version
+        id: v
+        shell: bash
+        run: echo "version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Package (zip)
+        shell: pwsh
+        run: |
+          $dir = "ArpWise-${{ steps.v.outputs.version }}-windows-${{ matrix.label }}"
+          New-Item -ItemType Directory -Path $dir | Out-Null
+          $bin = "target/${{ matrix.target }}/release"
+          Copy-Item "$bin/arpwise.exe", "$bin/arpwise-gui.exe", "LICENSE", "README.md" $dir
+          Compress-Archive -Path $dir -DestinationPath "$dir.zip"
+
+      - name: Package (MSI)
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+          wix build `
+            -arch ${{ matrix.wix_arch }} `
+            -d Version=${{ steps.v.outputs.version }} `
+            -d "BinDir=target\${{ matrix.target }}\release" `
+            -o "ArpWise-${{ steps.v.outputs.version }}-windows-${{ matrix.label }}.msi" `
+            packaging\windows\arpwise.wxs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.label }}
+          path: |
+            ArpWise-*.zip
+            ArpWise-*.msi
+
+  # ------------------------------------------------------------------ Linux --
+  linux:
+    name: Linux ${{ matrix.label }} (deb + rpm)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: x64,   target: x86_64-unknown-linux-gnu }
+          - { label: x86,   target: i686-unknown-linux-gnu }
+          - { label: arm64, target: aarch64-unknown-linux-gnu }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # Zig is used as the cross linker; glibc 2.17 keeps the binaries
+      # compatible with old distributions.
+      - name: Install Zig
+        run: python3 -m pip install --user ziglang
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild,cargo-deb,cargo-generate-rpm
+
+      - name: Build
+        run: cargo zigbuild --release --locked --target ${{ matrix.target }}.2.17
+
+      - name: Package (deb)
+        run: |
+          mkdir -p dist
+          cargo deb --no-build --no-strip --target ${{ matrix.target }} --output dist/
+
+      - name: Package (rpm)
+        run: cargo generate-rpm --target ${{ matrix.target }} --output dist/
+
+      - name: Rename packages
+        run: |
+          cd dist
+          ls -la
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.label }}
+          path: |
+            dist/*.deb
+            dist/*.rpm
+
+  # ---------------------------------------------------------------- Release --
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd artifacts
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
