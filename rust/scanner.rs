@@ -2,8 +2,9 @@
 
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
+use std::sync::{mpsc, Mutex};
 use std::thread;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 
@@ -169,15 +170,17 @@ pub fn scan_network(
     timeout: f64,
     progress: Option<Progress<'_>>,
 ) -> Result<Vec<Device>, String> {
-    let mut devices = discover(network, timeout, progress)?;
+    let debug = std::env::var_os("ARPWISE_DEBUG").is_some();
+    let started = Instant::now();
 
-    // Reverse DNS can be slow, so resolve all hosts in parallel.
-    let ips: Vec<Ipv4Addr> = devices.iter().map(|d| d.ip).collect();
-    let names = parallel_map(&ips, 32, |ip| (*ip, resolve_hostname(*ip)));
-    for (ip, name) in names {
-        if let Some(device) = devices.iter_mut().find(|d| d.ip == ip) {
-            device.hostname = name;
-        }
+    let mut devices = discover(network, timeout, progress)?;
+    if debug {
+        eprintln!("[arpwise] discovery: {:.1}s", started.elapsed().as_secs_f32());
+    }
+
+    resolve_hostnames(&mut devices, HOSTNAME_BUDGET);
+    if debug {
+        eprintln!("[arpwise] hostnames: {:.1}s", started.elapsed().as_secs_f32());
     }
 
     for device in &mut devices {
@@ -186,4 +189,33 @@ pub fn scan_network(
 
     sort_devices(&mut devices);
     Ok(devices)
+}
+
+/// Reverse DNS can hang for many seconds on a home network. Every lookup runs
+/// in its own thread and we only wait this long for all of them together;
+/// devices that did not answer in time simply show no hostname.
+const HOSTNAME_BUDGET: Duration = Duration::from_millis(1200);
+
+fn resolve_hostnames(devices: &mut [Device], budget: Duration) {
+    let (tx, rx) = mpsc::channel();
+    for device in devices.iter() {
+        let (tx, ip) = (tx.clone(), device.ip);
+        thread::spawn(move || {
+            let _ = tx.send((ip, resolve_hostname(ip)));
+        });
+    }
+    drop(tx);
+
+    let deadline = Instant::now() + budget;
+    while let Some(left) = deadline.checked_duration_since(Instant::now()) {
+        match rx.recv_timeout(left) {
+            Ok((ip, name)) => {
+                if let Some(device) = devices.iter_mut().find(|d| d.ip == ip) {
+                    device.hostname = name;
+                }
+            }
+            // Timed out, or every lookup has answered.
+            Err(_) => break,
+        }
+    }
 }

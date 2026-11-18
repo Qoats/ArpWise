@@ -21,8 +21,12 @@ Written in Rust. One small executable. No Npcap, no Wireshark, no admin tools to
 - Latency of every device, with a colour indicator
 - Device history: first and last seen, new devices flagged, offline devices kept
 - Automatic rescans (30 s to 15 min)
-- Search, filters (new, slow, no ping reply), sortable columns, custom labels
+- Device type guess (router, network gear, computer, mobile, printer, media, IoT)
+- Network map: the router in the middle, devices around it, placed and coloured by latency
+- Latency graph per device, kept for the session
+- Search, filters (new, slow, no ping reply, by type), sortable columns, custom labels
 - Right-click actions: ping, traceroute, port scan, open in browser, Wake-on-LAN, copy IP or MAC
+- Keyboard shortcuts: `F5` or `Ctrl+R` rescan, `Ctrl+F` search, `Ctrl+E` export
 - Custom TCP port scan (`22,80,8000-8100`)
 - Export to CSV or JSON
 - Public IP and approximate location
@@ -66,6 +70,10 @@ Run `arpwise-gui`. The network is detected automatically. Click **Scanner**, sel
 ## Limits
 
 ArpWise finds devices on the same local IPv4 subnet. ARP does not cross routers, so devices on other routed networks are out of reach. Only private networks of /16 or smaller are scanned.
+
+## Publisher
+
+ArpWise is made by **Qoats** — *software with a spine*. The graphical app opens with a short Qoats loading screen.
 
 ## License
 

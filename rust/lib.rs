@@ -4,6 +4,7 @@
 //! triggers neighbour discovery with UDP and reads `/proc/net/arp`.
 
 pub mod config;
+pub mod devicetype;
 pub mod export;
 pub mod history;
 pub mod labels;

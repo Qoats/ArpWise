@@ -1,6 +1,6 @@
-﻿#![cfg_attr(windows, windows_subsystem = "windows")]
+#![cfg_attr(windows, windows_subsystem = "windows")]
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::net::Ipv4Addr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -11,6 +11,7 @@ use eframe::egui::{self, Color32, RichText};
 use egui_extras::{Column, TableBuilder};
 use arpwise::{
     config::{config_dir, normalize_mac},
+    devicetype::{guess_gateway, guess_type, DeviceType},
     export::export_devices,
     history::{offline_devices, record_scan, History},
     labels::{get_label, load_labels, save_labels, Labels},
@@ -26,6 +27,11 @@ use arpwise::{
     Device,
 };
 
+/// The splash screen stays at least this long, and at most `SPLASH_MAX`
+/// seconds if the first scan is slow.
+const SPLASH_MIN: f32 = 5.0;
+const SPLASH_MAX: f32 = 20.0;
+
 const BG: Color32 = Color32::from_rgb(0x0d, 0x13, 0x1b);
 const PANEL: Color32 = Color32::from_rgb(0x11, 0x18, 0x21);
 const CARD: Color32 = Color32::from_rgb(0x15, 0x1f, 0x2b);
@@ -39,6 +45,7 @@ const BAD: Color32 = Color32::from_rgb(0xf0, 0x5d, 0x5e);
 #[derive(Clone)]
 struct Row {
     device: Device,
+    kind: DeviceType,
     online: bool,
     first_seen: String,
     last_seen: String,
@@ -65,6 +72,7 @@ enum SortBy {
     Host,
     Latency,
     Label,
+    Type,
     Status,
 }
 
@@ -74,6 +82,12 @@ enum Filter {
     New,
     Slow,
     NoPing,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum View {
+    List,
+    Map,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -109,11 +123,24 @@ struct App {
     label_edit: String,
 
     search: String,
+    search_id: egui::Id,
     filter: Filter,
+    type_filter: Option<DeviceType>,
+    view: View,
     sort: SortBy,
     sort_desc: bool,
     tab: Tab,
     settings: Settings,
+    gateway: Option<Ipv4Addr>,
+    latency_history: HashMap<String, Vec<f64>>,
+    scan_started: Instant,
+    scan_secs: f64,
+    splash_start: Instant,
+    splash_done: bool,
+    splash_centered: bool,
+    splash_closing: u8,
+    logo: egui::TextureHandle,
+    splash_bg: Color32,
 
     scanning: bool,
     busy: bool,
@@ -130,6 +157,7 @@ impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let settings = load_settings();
         apply_style(&cc.egui_ctx, settings.dark_theme);
+        let (logo, splash_bg) = load_logo(&cc.egui_ctx);
         let (tx, rx) = channel();
         let local = local_network_info();
         let mut app = Self {
@@ -144,7 +172,20 @@ impl App {
             selected_mac: None,
             label_edit: String::new(),
             search: String::new(),
+            search_id: egui::Id::unique("arpwise-search"),
             filter: Filter::All,
+            type_filter: None,
+            view: if settings.map_view { View::Map } else { View::List },
+            gateway: None,
+            latency_history: HashMap::new(),
+            scan_started: Instant::now(),
+            scan_secs: 0.0,
+            splash_start: Instant::now(),
+            splash_done: false,
+            splash_centered: false,
+            splash_closing: 0,
+            logo,
+            splash_bg,
             sort: SortBy::Ip,
             sort_desc: false,
             tab: Tab::Device,
@@ -184,6 +225,7 @@ impl App {
 
         self.scanning = true;
         self.last_scan = Instant::now();
+        self.scan_started = Instant::now();
         self.done.store(0, Ordering::Relaxed);
         self.total.store(network.hosts().len(), Ordering::Relaxed);
         self.status = format!("Analyse de {network}…");
@@ -262,6 +304,19 @@ impl App {
     fn scan_done(&mut self, output: ScanOutput) {
         self.scanning = false;
         self.last_scan = Instant::now();
+        self.scan_secs = self.scan_started.elapsed().as_secs_f64();
+        self.gateway = guess_gateway(&output.devices);
+        let gateway = self.gateway;
+
+        for device in &output.devices {
+            if let Some(ms) = device.latency_ms {
+                let series = self.latency_history.entry(device.mac.clone()).or_default();
+                series.push(ms);
+                if series.len() > 120 {
+                    series.remove(0);
+                }
+            }
+        }
 
         let stamp = |mac: &str| -> (String, String) {
             output
@@ -276,7 +331,7 @@ impl App {
             .iter()
             .map(|d| {
                 let (first_seen, last_seen) = stamp(&d.mac);
-                Row { device: d.clone(), online: true, first_seen, last_seen }
+                Row { kind: guess_type(d, gateway), device: d.clone(), online: true, first_seen, last_seen }
             })
             .collect();
 
@@ -286,6 +341,7 @@ impl App {
                 device.hostname = entry.hostname.clone();
                 device.vendor = entry.vendor.clone();
                 rows.push(Row {
+                    kind: guess_type(&device, gateway),
                     device,
                     online: false,
                     first_seen: entry.first_seen.clone(),
@@ -295,7 +351,10 @@ impl App {
         }
 
         let online = output.devices.len();
-        self.status = format!("{online} appareil(s) en ligne · {}", self.network_input);
+        self.status = format!(
+            "{online} appareil(s) en ligne · {} · scan en {:.1} s",
+            self.network_input, self.scan_secs
+        );
         if !output.new_macs.is_empty() {
             self.status += &format!(" · {} nouveau(x)", output.new_macs.len());
         }
@@ -349,6 +408,9 @@ impl App {
                 if !row.online && !self.settings.show_offline {
                     return false;
                 }
+                if self.type_filter.is_some_and(|kind| kind != row.kind) {
+                    return false;
+                }
                 let keep = match self.filter {
                     Filter::All => true,
                     Filter::New => self.is_new(d),
@@ -384,6 +446,7 @@ impl App {
                 SortBy::Label => get_label(&self.labels, &da.mac)
                     .to_lowercase()
                     .cmp(&get_label(&self.labels, &db.mac).to_lowercase()),
+                SortBy::Type => ra.kind.label().cmp(rb.kind.label()),
                 SortBy::Status => self.is_new(db).cmp(&self.is_new(da)),
             };
             // Offline devices always go last, whichever the direction.
@@ -530,10 +593,30 @@ impl App {
             ] {
                 ui.selectable_value(&mut self.filter, filter, text);
             }
+            egui::ComboBox::from_id_salt("type_filter")
+                .selected_text(self.type_filter.map_or("Tous les types", |k| k.label()))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.type_filter, None, "Tous les types");
+                    for kind in [
+                        DeviceType::Router,
+                        DeviceType::NetworkGear,
+                        DeviceType::Computer,
+                        DeviceType::Mobile,
+                        DeviceType::Printer,
+                        DeviceType::Media,
+                        DeviceType::Iot,
+                        DeviceType::Unknown,
+                    ] {
+                        ui.selectable_value(&mut self.type_filter, Some(kind), kind.label());
+                    }
+                });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.selectable_value(&mut self.view, View::Map, "Carte");
+                ui.selectable_value(&mut self.view, View::List, "Liste");
                 ui.add(
                     egui::TextEdit::singleline(&mut self.search)
-                        .hint_text("Rechercher IP, MAC, hôte…")
+                        .id(self.search_id)
+                        .hint_text("Rechercher IP, MAC, hôte…  (Ctrl+F)")
                         .desired_width(240.0),
                 );
             });
@@ -555,6 +638,11 @@ impl App {
             return;
         }
 
+        if self.view == View::Map {
+            self.map(ui, &visible);
+            return;
+        }
+
         let mut clicked: Option<String> = None;
         let mut sort_request: Option<SortBy> = None;
         let mut pending: Option<(Action, Device)> = None;
@@ -563,6 +651,7 @@ impl App {
             (SortBy::Ip, "Adresse IP"),
             (SortBy::Mac, "Adresse MAC"),
             (SortBy::Vendor, "Fabricant"),
+            (SortBy::Type, "Type"),
             (SortBy::Host, "Nom d’hôte"),
             (SortBy::Latency, "Latence"),
             (SortBy::Label, "Étiquette"),
@@ -574,7 +663,8 @@ impl App {
             .sense(egui::Sense::click())
             .column(Column::auto().at_least(110.0))
             .column(Column::auto().at_least(140.0))
-            .column(Column::initial(170.0).at_least(80.0).clip(true))
+            .column(Column::initial(160.0).at_least(80.0).clip(true))
+            .column(Column::auto().at_least(100.0))
             .column(Column::initial(150.0).at_least(80.0).clip(true))
             .column(Column::auto().at_least(80.0))
             .column(Column::remainder().at_least(80.0).clip(true))
@@ -613,6 +703,10 @@ impl App {
                     });
                     row.col(|ui| {
                         ui.label(dim(ui, &device.vendor));
+                    });
+                    row.col(|ui| {
+                        let color = if item.online { type_color(item.kind) } else { muted(ui) };
+                        ui.label(RichText::new(item.kind.label()).color(color));
                     });
                     row.col(|ui| {
                         let host = if device.hostname.is_empty() { "—" } else { &device.hostname };
@@ -682,6 +776,199 @@ impl App {
         }
     }
 
+    /// Radar-style map: the router in the middle, devices around it, placed
+    /// further out when they answer more slowly.
+    fn map(&mut self, ui: &mut egui::Ui, visible: &[usize]) {
+        let (response, painter) = ui.allocate_painter(ui.available_size(), egui::Sense::click());
+        let rect = response.rect;
+        let center = rect.center();
+        let radius = (rect.size().min_elem() * 0.5 - 40.0).max(80.0);
+        let line = ui.visuals().widgets.noninteractive.bg_stroke.color;
+        let text_color = ui.visuals().text_color();
+        let weak = muted(ui);
+
+        for fraction in [0.35, 0.65, 1.0] {
+            painter.circle_stroke(center, radius * fraction, egui::Stroke::new(1.0, line));
+        }
+
+        // The gateway sits in the middle; everyone else around it.
+        let hub = visible.iter().copied().find(|&i| Some(self.rows[i].device.ip) == self.gateway);
+        let others: Vec<usize> = visible.iter().copied().filter(|&i| Some(i) != hub).collect();
+
+        struct Node {
+            index: usize,
+            pos: egui::Pos2,
+        }
+        let mut nodes: Vec<Node> = Vec::new();
+        let count = others.len().max(1) as f32;
+        for (n, &index) in others.iter().enumerate() {
+            let row = &self.rows[index];
+            let distance = match (row.online, row.device.latency_ms) {
+                (false, _) => 1.0,
+                (true, None) => 0.85,
+                (true, Some(ms)) if ms < 20.0 => 0.38,
+                (true, Some(ms)) if ms < 80.0 => 0.68,
+                (true, Some(_)) => 0.95,
+            };
+            let angle = std::f32::consts::TAU * n as f32 / count - std::f32::consts::FRAC_PI_2;
+            nodes.push(Node {
+                index,
+                pos: center + egui::vec2(angle.cos(), angle.sin()) * radius * distance,
+            });
+        }
+
+        let pointer = response.hover_pos();
+        let mut hovered: Option<usize> = None;
+        let mut clicked_mac: Option<String> = None;
+
+        for node in &nodes {
+            let alpha = if self.rows[node.index].online { 70 } else { 30 };
+            painter.line_segment(
+                [center, node.pos],
+                egui::Stroke::new(1.0, Color32::from_rgba_unmultiplied(line.r(), line.g(), line.b(), alpha)),
+            );
+        }
+
+        // Hub.
+        let hub_row = hub.map(|i| &self.rows[i]);
+        painter.circle_filled(center, 22.0, ACCENT);
+        painter.text(
+            center,
+            egui::Align2::CENTER_CENTER,
+            hub_row.map_or("LAN", |r| r.kind.short()),
+            egui::FontId::proportional(12.0),
+            Color32::WHITE,
+        );
+        painter.text(
+            center + egui::vec2(0.0, 34.0),
+            egui::Align2::CENTER_CENTER,
+            hub_row.map_or("Réseau".to_string(), |r| r.device.ip.to_string()),
+            egui::FontId::proportional(11.0),
+            weak,
+        );
+        if let (Some(pos), Some(i)) = (pointer, hub) {
+            if pos.distance(center) < 22.0 {
+                hovered = Some(i);
+            }
+        }
+
+        for node in &nodes {
+            let row = &self.rows[node.index];
+            let selected = self.selected_mac.as_deref() == Some(row.device.mac.as_str());
+            let color = if row.online { latency_color(row.device.latency_ms) } else { Color32::from_gray(0x6a) };
+
+            if pointer.is_some_and(|p| p.distance(node.pos) < 17.0) {
+                hovered = Some(node.index);
+            }
+            if selected || hovered == Some(node.index) {
+                painter.circle_stroke(node.pos, 20.0, egui::Stroke::new(2.0, ACCENT));
+            }
+            painter.circle_filled(node.pos, 15.0, color);
+            painter.text(
+                node.pos,
+                egui::Align2::CENTER_CENTER,
+                row.kind.short(),
+                egui::FontId::proportional(9.0),
+                Color32::BLACK,
+            );
+
+            let label = get_label(&self.labels, &row.device.mac);
+            let name = if !label.is_empty() {
+                label.to_string()
+            } else if !row.device.hostname.is_empty() {
+                row.device.hostname.clone()
+            } else {
+                row.device.ip.to_string()
+            };
+            painter.text(
+                node.pos + egui::vec2(0.0, 26.0),
+                egui::Align2::CENTER_CENTER,
+                name,
+                egui::FontId::proportional(11.0),
+                if row.online { text_color } else { weak },
+            );
+        }
+
+        if let Some(index) = hovered {
+            let row = &self.rows[index];
+            let device = &row.device;
+            response.clone().on_hover_ui_at_pointer(|ui| {
+                ui.label(RichText::new(row.kind.label()).strong());
+                ui.label(format!("{}  ·  {}", device.ip, device.mac));
+                if !device.vendor.is_empty() {
+                    ui.label(&device.vendor);
+                }
+                if !device.hostname.is_empty() {
+                    ui.label(&device.hostname);
+                }
+                ui.label(if row.online {
+                    device.latency_ms.map_or("en ligne".to_string(), |ms| format!("{ms:.0} ms"))
+                } else {
+                    "hors ligne".to_string()
+                });
+            });
+            if response.clicked() {
+                clicked_mac = Some(device.mac.clone());
+            }
+        }
+
+        // Legend.
+        let legend = [
+            (GOOD, "< 20 ms"),
+            (WARN, "< 80 ms"),
+            (BAD, "≥ 80 ms"),
+            (Color32::from_gray(0x6a), "hors ligne"),
+        ];
+        for (n, (color, text)) in legend.iter().enumerate() {
+            let y = rect.bottom() - 14.0 - 16.0 * (legend.len() - 1 - n) as f32;
+            painter.circle_filled(egui::pos2(rect.left() + 14.0, y), 5.0, *color);
+            painter.text(
+                egui::pos2(rect.left() + 26.0, y),
+                egui::Align2::LEFT_CENTER,
+                *text,
+                egui::FontId::proportional(11.0),
+                weak,
+            );
+        }
+
+        if let Some(mac) = clicked_mac {
+            self.selected_mac = Some(mac);
+            self.sync_label_edit();
+            self.tab = Tab::Device;
+        }
+    }
+
+    /// Small borderless loading window, exactly the size of the logo.
+    fn splash(&self, ui: &mut egui::Ui, t: f32) {
+        egui::CentralPanel::default()
+            .frame(egui::Frame::new().fill(self.splash_bg))
+            .show(ui, |ui| {
+                let rect = ui.max_rect();
+                let alpha = ((t / 0.5).clamp(0.0, 1.0) * 255.0) as u8;
+                ui.put(
+                    rect,
+                    egui::Image::new(egui::load::SizedTexture::new(self.logo.id(), rect.size()))
+                        .tint(Color32::from_white_alpha(alpha)),
+                );
+
+                // Windows 10 style loading animation, as a line: five dots
+                // slide from left to right, fast at the edges and slow in
+                // the middle, one after the other.
+                let ink = Color32::from_rgb(0x2a, 0x20, 0x1a);
+                let y = rect.bottom() - 12.0;
+                let cycle = (t / 2.2).fract();
+                for i in 0..5 {
+                    let p = cycle * 1.5 - i as f32 * 0.09;
+                    if !(0.0..=1.0).contains(&p) {
+                        continue;
+                    }
+                    let eased = p + 0.9 * (std::f32::consts::TAU * p).sin() / std::f32::consts::TAU;
+                    let x = rect.left() + 6.0 + (rect.width() - 12.0) * eased.clamp(0.0, 1.0);
+                    ui.painter().circle_filled(egui::pos2(x, y), 2.5, ink.gamma_multiply(alpha as f32 / 255.0));
+                }
+            });
+    }
+
     fn side_panel(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.horizontal(|ui| {
             ui.selectable_value(&mut self.tab, Tab::Device, "Appareil");
@@ -712,10 +999,16 @@ impl App {
         ui.add_space(6.0);
         field(ui, "Adresse IP", &device.ip.to_string());
         field(ui, "Adresse MAC", &device.mac);
+        field(ui, "Type", row.kind.label());
         field(ui, "Fabricant", if device.vendor.is_empty() { "Inconnu" } else { &device.vendor });
         field(ui, "Nom d’hôte", if device.hostname.is_empty() { "Inconnu" } else { &device.hostname });
         if row.online {
             field(ui, "Latence", &device.latency_ms.map_or("—".into(), |ms| format!("{ms:.0} ms")));
+        }
+        if let Some(series) = self.latency_history.get(&device.mac) {
+            if series.len() >= 2 {
+                sparkline(ui, series);
+            }
         }
         field(ui, "Premier passage", &pretty_time(&row.first_seen));
         field(ui, "Dernier passage", &pretty_time(&row.last_seen));
@@ -846,6 +1139,13 @@ impl App {
         ui.checkbox(&mut self.settings.show_offline, "Afficher les appareils hors ligne");
 
         ui.add_space(12.0);
+        ui.label(RichText::new("À propos").color(muted(ui)).small());
+        ui.label(format!(
+            "ArpWise {} · Éditeur : {}",
+            env!("CARGO_PKG_VERSION"),
+            env!("CARGO_PKG_AUTHORS")
+        ));
+        ui.add_space(12.0);
         ui.label(RichText::new("Données").color(muted(ui)).small());
         ui.add(egui::Label::new(config_dir().display().to_string()).selectable(true).wrap());
         ui.add_space(6.0);
@@ -933,6 +1233,64 @@ impl App {
     }
 }
 
+fn type_color(kind: DeviceType) -> Color32 {
+    match kind {
+        DeviceType::Router => ACCENT,
+        DeviceType::NetworkGear => Color32::from_rgb(0x2d, 0xb7, 0xb0),
+        DeviceType::Computer => Color32::from_rgb(0x6c, 0xa6, 0xe8),
+        DeviceType::Mobile => Color32::from_rgb(0xb0, 0x8a, 0xf0),
+        DeviceType::Printer => Color32::from_rgb(0xe8, 0x93, 0x4a),
+        DeviceType::Media => Color32::from_rgb(0xe8, 0x6c, 0xa8),
+        DeviceType::Iot => GOOD,
+        DeviceType::Unknown => Color32::from_gray(0x8a),
+    }
+}
+
+/// A small latency graph for one device.
+fn sparkline(ui: &mut egui::Ui, series: &[f64]) {
+    let min = series.iter().cloned().fold(f64::MAX, f64::min);
+    let max = series.iter().cloned().fold(f64::MIN, f64::max);
+    let avg = series.iter().sum::<f64>() / series.len() as f64;
+
+    ui.label(RichText::new("Latence (cette session)").color(muted(ui)).small());
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 46.0), egui::Sense::hover());
+    let painter = ui.painter_at(rect);
+    painter.rect_filled(rect, 0.0, ui.visuals().extreme_bg_color);
+
+    let span = (max - min).max(1.0);
+    let points: Vec<egui::Pos2> = series
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            let x = rect.left() + 4.0 + (rect.width() - 8.0) * i as f32 / (series.len() - 1) as f32;
+            let y = rect.bottom() - 4.0 - (rect.height() - 8.0) * ((v - min) / span) as f32;
+            egui::pos2(x, y)
+        })
+        .collect();
+    painter.add(egui::Shape::line(points, egui::Stroke::new(1.5, ACCENT)));
+    ui.label(
+        RichText::new(format!("min {min:.0} · moy {avg:.0} · max {max:.0} ms · {} mesures", series.len()))
+            .color(muted(ui))
+            .small(),
+    );
+    ui.add_space(6.0);
+}
+
+/// Decode the embedded publisher logo; returns the texture and its
+/// background colour so the splash screen blends in seamlessly.
+fn load_logo(ctx: &egui::Context) -> (egui::TextureHandle, Color32) {
+    let bytes = include_bytes!("../../assets/qoats-logo.jpg");
+    let rgba = image::load_from_memory(bytes)
+        .expect("valid embedded logo")
+        .to_rgba8();
+    let (w, h) = (rgba.width() as usize, rgba.height() as usize);
+    let corner = rgba.get_pixel(2, 2);
+    let background = Color32::from_rgb(corner[0], corner[1], corner[2]);
+    let color_image = egui::ColorImage::from_rgba_unmultiplied([w, h], rgba.as_raw());
+    let texture = ctx.load_texture("qoats-logo", color_image, egui::TextureOptions::LINEAR);
+    (texture, background)
+}
+
 fn muted(ui: &egui::Ui) -> Color32 {
     ui.visuals().weak_text_color()
 }
@@ -1011,6 +1369,67 @@ impl eframe::App for App {
         let ctx = ui.ctx().clone();
         self.poll_messages();
 
+        // Loading screen: a small window the size of the logo, shown at least
+        // SPLASH_MIN seconds and until the first scan is done (SPLASH_MAX cap).
+        // Then the real window opens.
+        if !self.splash_done {
+            let t = self.splash_start.elapsed().as_secs_f32();
+
+            if !self.splash_centered {
+                self.splash_centered = true;
+                if let Some(command) = egui::ViewportCommand::center_on_screen(&ctx) {
+                    ctx.send_viewport_cmd(command);
+                }
+            }
+
+            if self.splash_closing == 0 && t >= SPLASH_MIN && (!self.scanning || t >= SPLASH_MAX) {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Decorations(true));
+                ctx.send_viewport_cmd(egui::ViewportCommand::Resizable(true));
+                ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(egui::vec2(1040.0, 600.0)));
+                ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(1280.0, 760.0)));
+                if let Some(command) = egui::ViewportCommand::center_on_screen(&ctx) {
+                    ctx.send_viewport_cmd(command);
+                }
+                self.splash_closing = 4;
+            }
+
+            if self.splash_closing > 0 {
+                // Blank frames while the window changes size.
+                self.splash_closing -= 1;
+                if self.splash_closing == 0 {
+                    self.splash_done = true;
+                    self.last_scan = Instant::now();
+                }
+                egui::CentralPanel::default()
+                    .frame(egui::Frame::new().fill(self.splash_bg))
+                    .show(ui, |_| {});
+                ctx.request_repaint();
+                return;
+            }
+
+            self.splash(ui, t);
+            ctx.request_repaint_after(Duration::from_millis(33));
+            return;
+        }
+
+        // Keyboard shortcuts.
+        let (rescan, find, export) = ctx.input(|i| {
+            (
+                i.key_pressed(egui::Key::F5) || (i.modifiers.command && i.key_pressed(egui::Key::R)),
+                i.modifiers.command && i.key_pressed(egui::Key::F),
+                i.modifiers.command && i.key_pressed(egui::Key::E),
+            )
+        });
+        if rescan {
+            self.start_scan(&ctx);
+        }
+        if find {
+            ctx.memory_mut(|m| m.request_focus(self.search_id));
+        }
+        if export {
+            self.export();
+        }
+
         // Automatic rescan.
         if self.settings.auto_scan_secs > 0 {
             let interval = Duration::from_secs(self.settings.auto_scan_secs);
@@ -1038,6 +1457,13 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ui, |ui| self.table(ui, &ctx));
 
         self.dialogs(&ctx);
+
+        // Remember the chosen view.
+        let map_view = self.view == View::Map;
+        if map_view != self.settings.map_view {
+            self.settings.map_view = map_view;
+            save_settings(&self.settings);
+        }
     }
 }
 
@@ -1045,8 +1471,13 @@ fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("ArpWise")
-            .with_inner_size([1280.0, 760.0])
-            .with_min_inner_size([1040.0, 600.0]),
+            .with_icon(
+                eframe::icon_data::from_png_bytes(include_bytes!("../../assets/icon.png"))
+                    .expect("valid embedded icon"),
+            )
+            .with_decorations(false)
+            .with_resizable(false)
+            .with_inner_size([450.0, 166.0]),
         ..Default::default()
     };
     eframe::run_native("ArpWise", options, Box::new(|cc| Ok(Box::new(App::new(cc)))))

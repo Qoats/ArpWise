@@ -12,6 +12,8 @@ pub struct Settings {
     pub auto_scan_secs: u64,
     /// Show known devices that did not answer the last scan.
     pub show_offline: bool,
+    /// Open on the network map instead of the list.
+    pub map_view: bool,
 }
 
 impl Default for Settings {
@@ -20,6 +22,7 @@ impl Default for Settings {
             dark_theme: true,
             auto_scan_secs: 0,
             show_offline: true,
+            map_view: false,
         }
     }
 }
