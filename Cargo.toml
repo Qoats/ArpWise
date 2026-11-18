@@ -49,7 +49,7 @@ winresource = "0.1.34"
 
 [package.metadata.deb]
 name = "arpwise"
-maintainer = "Qoats"
+maintainer = "Qoats <support@axim.ch>"
 copyright = "Qoats"
 license-file = ["LICENSE", "0"]
 extended-description = """\
