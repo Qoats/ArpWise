@@ -1,10 +1,39 @@
-# ArpWise
+<p align="center">
+  <img src="docs/assets/icon.png" alt="ArpWise" width="96">
+</p>
 
-**See everything on your network, in one click.** ArpWise is a fast, driver-free network scanner for Windows and Linux. It finds every device on your local network, tells you who made it, how fast it answers, and warns you when something new shows up.
+<h1 align="center">ArpWise</h1>
 
-Written in Rust. One small executable. No Npcap, no Wireshark, no admin tools to install.
+<p align="center">
+  <strong>See everything on your network, in one click.</strong><br>
+  A fast, driver-free network scanner for Windows and Linux.
+</p>
+
+<p align="center">
+  <a href="https://qoats.github.io/ArpWise/">Website</a> ·
+  <a href="https://github.com/Qoats/ArpWise/releases/latest">Download</a> ·
+  <a href="#command-line">Command line</a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/list.png" alt="ArpWise device list" width="900">
+</p>
+
+ArpWise finds every device on your local network, tells you who made it and how fast it answers, and warns you when something new shows up. Written in Rust, one small executable. No Npcap, no Wireshark, no admin tools to install.
 
 > Use ArpWise only on networks you own or are authorized to inspect.
+
+## Screenshots
+
+| Network map | Light theme, violet accent |
+|---|---|
+| <img src="docs/screenshots/map.png" alt="Network map"> | <img src="docs/screenshots/light.png" alt="Light theme"> |
+
+| Settings | Loading screen |
+|---|---|
+| <img src="docs/screenshots/settings.png" alt="Settings"> | <img src="docs/screenshots/splash.png" alt="Qoats loading screen"> |
+
+*The screenshots use made-up devices (demo mode, see below), not a real network.*
 
 ## Why ArpWise
 
@@ -34,7 +63,24 @@ Written in Rust. One small executable. No Npcap, no Wireshark, no admin tools to
 - Export to CSV or JSON
 - Public IP and approximate location
 
-## Install
+## Download
+
+Get the latest build from the [Releases page](https://github.com/Qoats/ArpWise/releases/latest).
+
+| Platform | Files |
+|---|---|
+| Windows 64-bit, 32-bit, ARM64 | `.msi` installer or `.zip` |
+| Linux x64, 32-bit (i386), ARM64 | `.deb` (Debian, Ubuntu…) |
+| Linux x86_64, i686, aarch64 | `.rpm` (Fedora, openSUSE…) |
+
+```bash
+sudo apt install ./arpwise_*_amd64.deb      # Debian / Ubuntu
+sudo dnf install ./arpwise-*.x86_64.rpm     # Fedora
+```
+
+The Windows installer adds a Start menu shortcut and puts the `arpwise` command on your `PATH`.
+
+## Build from source
 
 Requires a recent stable [Rust](https://rustup.rs) toolchain (and the MSVC build tools on Windows).
 
@@ -64,7 +110,9 @@ Devices are remembered between scans: new ones are flagged `NEW`, and known devi
 
 ## Graphical app
 
-Run `arpwise-gui`. The network is detected automatically. Click **Scanner**, select a device to see its details, or right-click it for quick actions. Use **Exporter…** to save the list and **Fabricants** to download the manufacturer database. Theme, automatic rescans and offline devices are in the **Réglages** tab.
+Run `arpwise-gui`. The network is detected automatically. Click **Scanner**, select a device to see its details, or right-click it for quick actions. Use **Exporter…** to save the list and **Fabricants** to download the manufacturer database. Theme, accent colour, automatic rescans, columns and more are in the **Réglages** tab.
+
+**Demo mode.** Set `ARPWISE_DEMO=1` to open the app with made-up devices and no scan. Handy for screenshots.
 
 ## Where your data lives
 
@@ -76,7 +124,7 @@ ArpWise finds devices on the same local IPv4 subnet. ARP does not cross routers,
 
 ## Publisher
 
-ArpWise is made by **Qoats** — *software with a spine*. The graphical app opens with a short Qoats loading screen.
+ArpWise is made by **Qoats** — *software with a spine*. Contact: support@axim.ch
 
 ## License
 

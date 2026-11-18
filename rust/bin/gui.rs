@@ -16,7 +16,7 @@ use arpwise::{
     history::{offline_devices, record_scan, History},
     labels::{get_label, load_labels, save_labels, Labels},
     netinfo::{fetch_public_info, PublicInfo},
-    network::{local_network_info, parse_network, LocalInfo},
+    network::{local_network_info, parse_network, LocalInfo, Network},
     scanner::scan_network,
     settings::{load_settings, save_settings, Settings},
     tools::{
@@ -182,6 +182,8 @@ struct App {
     host_dialog: Option<HostTool>,
     show_shortcuts: bool,
     show_about: bool,
+    /// Fake data for screenshots (ARPWISE_DEMO=1); never scans or writes files.
+    demo: bool,
     splash_start: Instant,
     splash_done: bool,
     splash_centered: bool,
@@ -234,6 +236,7 @@ impl App {
             host_dialog: None,
             show_shortcuts: false,
             show_about: false,
+            demo: std::env::var_os("ARPWISE_DEMO").is_some(),
             splash_start: Instant::now(),
             splash_done: !show_splash,
             splash_centered: false,
@@ -253,9 +256,13 @@ impl App {
             ports_dialog: None,
             output: None,
         };
-        app.refresh_public(&cc.egui_ctx);
-        if scan_on_start {
-            app.start_scan(&cc.egui_ctx);
+        if app.demo {
+            app.load_demo();
+        } else {
+            app.refresh_public(&cc.egui_ctx);
+            if scan_on_start {
+                app.start_scan(&cc.egui_ctx);
+            }
         }
         if !show_splash {
             cc.egui_ctx.set_zoom_factor(scale);
@@ -282,8 +289,91 @@ impl App {
 
     // ---- background work ---------------------------------------------
 
+    /// Fill the window with made-up devices, so screenshots never show a
+    /// real network. Enabled with the `ARPWISE_DEMO` environment variable.
+    fn load_demo(&mut self) {
+        let network = Network::new(Ipv4Addr::new(192, 168, 1, 0), 24).expect("valid demo network");
+        self.local = Some(LocalInfo {
+            interface: "Wi-Fi".into(),
+            ip: Ipv4Addr::new(192, 168, 1, 23),
+            netmask: Ipv4Addr::new(255, 255, 255, 0),
+            network,
+        });
+        self.network_input = "192.168.1.0/24".into();
+        self.public = Some(Ok(PublicInfo {
+            ip: "203.0.113.42".into(),
+            city: "Exampleville".into(),
+            region: "Demo Region".into(),
+            country: "Nowhere".into(),
+            latitude: "0.0".into(),
+            longitude: "0.0".into(),
+            timezone: "UTC".into(),
+            asn: "AS64496".into(),
+            organization: "Example Telecom".into(),
+        }));
+
+        // (last octet, mac, hostname, vendor, latency, online)
+        let demo: [(u8, &str, &str, &str, Option<f64>, bool); 11] = [
+            (1, "9c:3d:cf:1a:2b:3c", "box-salon", "Netgear", Some(1.0), true),
+            (12, "f8:bc:12:4d:5e:6f", "laptop-alice", "Dell Inc.", Some(2.0), true),
+            (15, "da:7f:3a:11:22:33", "iphone-de-bob", "", Some(5.0), true),
+            (18, "a8:5b:b7:34:56:78", "galaxy-s24", "Samsung Electronics", Some(121.0), true),
+            (20, "00:1b:a9:9a:bc:de", "printer-bureau", "Brother Industries", Some(6.0), true),
+            (24, "ac:9b:0a:12:34:56", "tv-salon", "Sony Corporation", Some(9.0), true),
+            (30, "dc:a6:32:78:9a:bc", "pi-nas", "Raspberry Pi Trading", Some(1.0), true),
+            (31, "24:6f:28:de:f0:12", "esp-thermostat", "Espressif Inc.", Some(46.0), true),
+            (40, "6c:4c:bc:5f:2c:9d", "switch-bureau", "TP-Link Systems", Some(2.0), true),
+            (52, "3c:22:fb:aa:bb:cc", "", "", Some(18.0), true),
+            (77, "b0:7d:64:00:11:22", "old-tablet", "Lenovo", None, false),
+        ];
+
+        let gateway = Ipv4Addr::new(192, 168, 1, 1);
+        self.gateway = Some(gateway);
+        self.new_macs.insert("3c:22:fb:aa:bb:cc".into());
+
+        let mut seed: u32 = 7;
+        self.rows = demo
+            .iter()
+            .map(|(octet, mac, host, vendor, latency, online)| {
+                let mut device = Device::new(Ipv4Addr::new(192, 168, 1, *octet), mac.to_string());
+                device.hostname = host.to_string();
+                device.vendor = if vendor.is_empty() && *octet == 15 {
+                    "Adresse privée (aléatoire)".into()
+                } else {
+                    vendor.to_string()
+                };
+                device.latency_ms = *latency;
+
+                if let Some(base) = latency {
+                    let series = (0..36)
+                        .map(|_| {
+                            seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
+                            let wobble = ((seed >> 16) % 100) as f64 / 100.0;
+                            (base * (0.6 + wobble * 0.9)).max(1.0).round()
+                        })
+                        .collect();
+                    self.latency_history.insert(mac.to_string(), series);
+                }
+
+                let new_device = *octet == 52;
+                Row {
+                    kind: guess_type(&device, Some(gateway)),
+                    device,
+                    online: *online,
+                    first_seen: if new_device { "2026-11-18T17:58:40".into() } else { "2026-10-02T09:14:07".into() },
+                    last_seen: if *online { "2026-11-18T18:02:11".into() } else { "2026-11-17T21:30:52".into() },
+                }
+            })
+            .collect();
+
+        self.selected_mac = Some("f8:bc:12:4d:5e:6f".into());
+        self.sync_label_edit();
+        self.scan_secs = 3.4;
+        self.status = "10 appareil(s) en ligne · 192.168.1.0/24 · 1 nouveau · scan en 3.4 s".into();
+    }
+
     fn start_scan(&mut self, ctx: &egui::Context) {
-        if self.scanning {
+        if self.scanning || self.demo {
             return;
         }
         // Re-detect: the machine may have changed network.
@@ -888,21 +978,21 @@ impl App {
             cols.push((SortBy::Mac, "Adresse MAC", Column::auto().at_least(135.0)));
         }
         if st.col_vendor {
-            cols.push((SortBy::Vendor, "Fabricant", Column::initial(120.0).at_least(60.0).clip(true)));
+            cols.push((SortBy::Vendor, "Fabricant", Column::initial(110.0).at_least(60.0).clip(true)));
         }
         if st.col_type {
             cols.push((SortBy::Type, "Type", Column::auto().at_least(90.0)));
         }
         if st.col_host {
-            cols.push((SortBy::Host, "Nom d’hôte", Column::initial(130.0).at_least(60.0).clip(true)));
+            cols.push((SortBy::Host, "Nom d’hôte", Column::initial(120.0).at_least(60.0).clip(true)));
         }
         if st.col_latency {
             cols.push((SortBy::Latency, "Latence", Column::auto().at_least(80.0)));
         }
         if st.col_label {
-            cols.push((SortBy::Label, "Étiquette", Column::initial(110.0).at_least(60.0).clip(true)));
+            cols.push((SortBy::Label, "Étiquette", Column::initial(90.0).at_least(60.0).clip(true)));
         }
-        cols.push((SortBy::Status, "", Column::remainder().at_least(70.0)));
+        cols.push((SortBy::Status, "", Column::remainder().at_least(64.0)));
 
         let mut builder = TableBuilder::new(ui)
             .striped(true)
@@ -1454,7 +1544,12 @@ impl App {
         });
 
         egui::CollapsingHeader::new("Données").show(ui, |ui| {
-            ui.add(egui::Label::new(config_dir().display().to_string()).selectable(true).wrap());
+            let shown = if self.demo {
+                "%APPDATA%\\ArpWise".to_string()
+            } else {
+                config_dir().display().to_string()
+            };
+            ui.add(egui::Label::new(shown).selectable(true).wrap());
             ui.label(
                 RichText::new(if has_vendor_database() {
                     "Base des fabricants : installée"
