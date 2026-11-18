@@ -73,7 +73,7 @@ pub fn lookup_vendor(mac: &str) -> String {
 /// Download the IEEE registry. Returns the number of entries.
 pub fn update_vendors() -> Result<usize, String> {
     let raw = ureq::get(OUI_URL)
-        .header("User-Agent", "NetScanPy/0.4")
+        .header("User-Agent", "ArpWise/0.4")
         .call()
         .map_err(|e| format!("Téléchargement impossible : {e}"))?
         .body_mut()

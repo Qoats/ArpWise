@@ -40,7 +40,7 @@ impl PublicInfo {
 pub fn fetch_public_info() -> Result<PublicInfo, String> {
     let raw = ureq::get("https://ipapi.co/json/")
         .header("Accept", "application/json")
-        .header("User-Agent", "NetScanPy/0.4")
+        .header("User-Agent", "ArpWise/0.4")
         .call()
         .map_err(|e| format!("Informations Internet indisponibles : {e}"))?
         .body_mut()

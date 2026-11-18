@@ -257,6 +257,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "arpwise"
+version = "0.4.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "csv",
+ "dirs",
+ "dns-lookup",
+ "eframe",
+ "egui_extras",
+ "if-addrs",
+ "rfd",
+ "serde",
+ "serde_json",
+ "ureq",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2188,26 +2207,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
 dependencies = [
  "jni-sys 0.3.1",
-]
-
-[[package]]
-name = "netscanpy"
-version = "0.4.0"
-dependencies = [
- "arboard",
- "chrono",
- "clap",
- "csv",
- "dirs",
- "dns-lookup",
- "eframe",
- "egui_extras",
- "if-addrs",
- "rfd",
- "serde",
- "serde_json",
- "ureq",
- "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -4,7 +4,7 @@ use std::process::ExitCode;
 use std::time::Duration;
 
 use clap::{Parser, Subcommand};
-use netscanpy::{
+use arpwise::{
     export::export_devices,
     history::{offline_devices, record_scan},
     labels::load_labels,
@@ -16,7 +16,7 @@ use netscanpy::{
 };
 
 #[derive(Parser)]
-#[command(name = "netscanpy", version, about = "Discover devices on a local IPv4 network.")]
+#[command(name = "arpwise", version, about = "Discover devices on a local IPv4 network.")]
 struct Cli {
     /// Private IPv4 CIDR to scan, for example 192.168.1.0/24.
     #[arg(short, long)]
@@ -127,7 +127,7 @@ fn run(cli: Cli) -> Result<(), String> {
 
     print_devices(&devices, &network.to_string(), &new_macs, &offline);
     if !has_vendor_database() {
-        eprintln!("Tip: run 'netscanpy --update-vendors' to show device manufacturers.");
+        eprintln!("Tip: run 'arpwise --update-vendors' to show device manufacturers.");
     }
     Ok(())
 }
@@ -136,9 +136,9 @@ fn print_devices(
     devices: &[Device],
     network: &str,
     new_macs: &std::collections::HashSet<String>,
-    offline: &[(String, netscanpy::history::Entry)],
+    offline: &[(String, arpwise::history::Entry)],
 ) {
-    println!("\nNetScanPy\nNetwork: {network}\n");
+    println!("\nArpWise\nNetwork: {network}\n");
 
     let rows: Vec<[String; 6]> = devices
         .iter()

@@ -72,7 +72,7 @@ pub fn parse_network(value: &str) -> Result<Network, String> {
 
     let network = Network::new(addr, prefix)?;
     if !is_private(network.base_addr()) {
-        return Err("NetScanPy ne scanne que les réseaux IPv4 privés.".into());
+        return Err("ArpWise ne scanne que les réseaux IPv4 privés.".into());
     }
     if network.prefix < 16 {
         return Err("Réseau trop grand : utilisez /16 ou plus petit.".into());

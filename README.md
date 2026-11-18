@@ -1,29 +1,33 @@
-# NetScanPy
+# ArpWise
 
-NetScanPy is a lightweight open-source tool, written in Rust, for discovering devices on your local network.
+**See everything on your network, in one click.** ArpWise is a fast, driver-free network scanner for Windows and Linux. It finds every device on your local network, tells you who made it, how fast it answers, and warns you when something new shows up.
 
-No Npcap. No raw sockets. NetScanPy uses native operating-system features:
+Written in Rust. One small executable. No Npcap, no Wireshark, no admin tools to install.
 
-- **Windows**: the built-in `SendARP` API from `iphlpapi.dll`
-- **Linux**: normal UDP sockets to trigger neighbour discovery, then `/proc/net/arp`
+> Use ArpWise only on networks you own or are authorized to inspect.
 
-Two programs are built from the same code: `netscanpy` (terminal) and `netscanpy-gui` (graphical interface, egui).
+## Why ArpWise
 
-> Use NetScanPy only on networks you own or are authorized to inspect.
+- **Nothing to install first.** It uses what your system already has: the native `SendARP` API on Windows, kernel neighbour discovery and `/proc/net/arp` on Linux.
+- **Know who is on your network.** Every device with its IP, MAC address, hostname and manufacturer.
+- **Spot intruders.** ArpWise remembers what it has seen, flags new devices, and keeps known ones that went offline.
+- **Fast.** A full /24 scan takes seconds, and latency is measured for every device in parallel.
+- **Two ways to use it.** A clean graphical app (dark or light) and a scriptable command line.
 
 ## Features
 
-- IPv4 device discovery (IP, MAC, hostname), automatic local network detection
-- Manufacturer lookup from the IEEE registry (downloaded once, not bundled)
-- Latency of every device, measured in parallel
-- Device history: first/last seen, new devices flagged, known devices that went offline
+- IPv4 discovery with automatic local network detection
+- Manufacturer lookup from the IEEE registry (downloaded once, never bundled)
+- Latency of every device, with a colour indicator
+- Device history: first and last seen, new devices flagged, offline devices kept
+- Automatic rescans (30 s to 15 min)
+- Search, filters (new, slow, no ping reply), sortable columns, custom labels
+- Right-click actions: ping, traceroute, port scan, open in browser, Wake-on-LAN, copy IP or MAC
+- Custom TCP port scan (`22,80,8000-8100`)
 - Export to CSV or JSON
-- Custom TCP port scan (`22,80,8000-8100`), ping, traceroute
-- Wake-on-LAN
-- Device labels, search and column sorting in the GUI
-- Single executable, no runtime to install
+- Public IP and approximate location
 
-## Build
+## Install
 
 Requires a recent stable [Rust](https://rustup.rs) toolchain (and the MSVC build tools on Windows).
 
@@ -31,32 +35,37 @@ Requires a recent stable [Rust](https://rustup.rs) toolchain (and the MSVC build
 cargo build --release
 ```
 
-The binaries are in `target/release/`.
+You get two programs in `target/release/`:
+
+| Program | What it is |
+|---|---|
+| `arpwise-gui` | The graphical app |
+| `arpwise` | The command line |
 
 ## Command line
 
 ```bash
-netscanpy                                  # scan the detected local network
-netscanpy --network 192.168.1.0/24         # scan a specific private network
-netscanpy --ping --output devices.csv      # add latency, export (.csv or .json)
-netscanpy --update-vendors                 # download the manufacturer database
-netscanpy ports 192.168.1.10 --range 22,80,8000-8100
-netscanpy wake aa:bb:cc:dd:ee:ff
+arpwise                                  # scan the detected local network
+arpwise --network 192.168.1.0/24         # scan a specific private network
+arpwise --ping --output devices.csv      # add latency, export (.csv or .json)
+arpwise --update-vendors                 # download the manufacturer database
+arpwise ports 192.168.1.10 --range 22,80,8000-8100
+arpwise wake aa:bb:cc:dd:ee:ff
 ```
 
-Devices are remembered between scans: new ones are flagged `NEW`, and known devices that do not answer are listed. Use `--no-history` to disable this.
+Devices are remembered between scans: new ones are flagged `NEW`, and known devices that do not answer are listed. Use `--no-history` to turn this off.
 
-## GUI
+## Graphical app
 
-Run `netscanpy-gui`. The network is detected automatically; click **Scanner** to scan, select a device to see its details and actions, and use **Exporter…** or **Fabricants** in the top bar.
+Run `arpwise-gui`. The network is detected automatically. Click **Scanner**, select a device to see its details, or right-click it for quick actions. Use **Exporter…** to save the list and **Fabricants** to download the manufacturer database. Theme, automatic rescans and offline devices are in the **Réglages** tab.
 
-## Where data is stored
+## Where your data lives
 
-`%APPDATA%\NetScanPy` on Windows, `~/.config/NetScanPy` on Linux: `devices.json` (labels), `history.json` and `oui.csv` (manufacturers).
+`%APPDATA%\ArpWise` on Windows, `~/.config/ArpWise` on Linux: labels (`devices.json`), history (`history.json`), settings (`settings.json`) and manufacturers (`oui.csv`). Data from the earlier name, NetScanPy, is moved there automatically.
 
-## Current limitations
+## Limits
 
-NetScanPy focuses on devices reachable on the same local IPv4 subnet. ARP does not cross routers, so devices on other routed networks are outside the scope of this discovery method. Private networks of /16 or smaller only.
+ArpWise finds devices on the same local IPv4 subnet. ARP does not cross routers, so devices on other routed networks are out of reach. Only private networks of /16 or smaller are scanned.
 
 ## License
 

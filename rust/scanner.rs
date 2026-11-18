@@ -81,7 +81,9 @@ fn discover(
     let total = hosts.len();
     let done = AtomicUsize::new(0);
 
-    let found = parallel_map(&hosts, 64, |ip| {
+    // SendARP blocks for seconds on empty addresses; threads are cheap, so
+    // probe a whole /24 at once.
+    let found = parallel_map(&hosts, 256, |ip| {
         let destination = u32::from_ne_bytes(ip.octets());
         let mut mac = [0u8; 8];
         let mut length: u32 = 8;
@@ -158,7 +160,7 @@ fn discover(
     _timeout: f64,
     _progress: Option<Progress<'_>>,
 ) -> Result<Vec<Device>, String> {
-    Err("Système non pris en charge : NetScanPy fonctionne sous Windows et Linux.".into())
+    Err("Système non pris en charge : ArpWise fonctionne sous Windows et Linux.".into())
 }
 
 /// Discover devices on `network`: ARP, then hostnames and vendors.
