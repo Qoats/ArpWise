@@ -76,6 +76,8 @@ sudo dnf install ./arpwise-*.x86_64.rpm     # Fedora
 
 The Windows installer adds a Start menu shortcut and puts the `arpwise` command on your `PATH`.
 
+With a Rust toolchain, `cargo install arpwise` builds and installs both programs from [crates.io](https://crates.io/crates/arpwise).
+
 On Windows, [Scoop](https://scoop.sh) can install it from this repository:
 
 ```powershell
