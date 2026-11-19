@@ -90,7 +90,10 @@
     pre { background: var(--panel); border-radius: var(--radius); padding: 20px 22px;
       overflow-x: auto; font-size: 14px; line-height: 1.7; margin: 0; }
     pre .c { color: var(--muted); }
-    .pill { font-size: 13px; background: var(--card); padding: 3px 10px; border-radius: 8px; }
+    .pill { display: inline-block; font-size: 13px; background: var(--card); padding: 3px 12px; border-radius: 8px; text-decoration: none; }
+    a.pill:hover { background: var(--text); color: var(--bg); }
+    .other { margin: 16px 0 0; font-size: 14px; }
+    .other a { color: var(--muted); }
 
     .publisher { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; justify-content: center; text-align: center; }
     .publisher img { width: 270px; max-width: 100%; border-radius: 14px; }
@@ -128,9 +131,10 @@
     <h1>See everything on your network, in one click.</h1>
     <p class="lead">ArpWise is a fast, driver-free network scanner for Windows and Linux. It lists every device on your network, tells you who made it and how fast it answers, and warns you when something new shows up.</p>
     <div class="buttons">
-      <a class="btn primary" href="https://github.com/Qoats/ArpWise/releases/latest">Download</a>
+      <a class="btn primary" id="download-main" href="#download">Download</a>
       <a class="btn" href="https://github.com/Qoats/ArpWise">View on GitHub</a>
     </div>
+    <p class="other" id="download-other"><a href="#download">Other systems and formats</a></p>
     <div class="shot"><img src="screenshots/list.png" alt="ArpWise showing the list of devices on a network" width="1296" height="799"></div>
   </div>
 
@@ -165,16 +169,16 @@
   <section id="download">
     <div class="wrap">
       <h2>Download</h2>
-      <p class="sub">Pick your system on the <a href="https://github.com/Qoats/ArpWise/releases/latest">latest release</a>.</p>
+      <p class="sub">Click the file for your system: the download starts right away. Version <span data-version>0.5.0</span>.</p>
       <table>
         <thead><tr><th>System</th><th>64-bit</th><th>32-bit</th><th>ARM64</th></tr></thead>
         <tbody>
-          <tr><td><strong>Windows</strong></td><td><span class="pill">.msi</span> <span class="pill">.zip</span></td><td><span class="pill">.msi</span> <span class="pill">.zip</span></td><td><span class="pill">.msi</span> <span class="pill">.zip</span></td></tr>
-          <tr><td><strong>Linux</strong> Debian, Ubuntu…</td><td><span class="pill">.deb</span></td><td><span class="pill">.deb</span></td><td><span class="pill">.deb</span></td></tr>
-          <tr><td><strong>Linux</strong> Fedora, openSUSE…</td><td><span class="pill">.rpm</span></td><td><span class="pill">.rpm</span></td><td><span class="pill">.rpm</span></td></tr>
+          <tr><td><strong>Windows</strong></td><td><a class="pill" data-asset="msi-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-x64.msi">.msi</a> <a class="pill" data-asset="zip-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-x64.zip">.zip</a></td><td><a class="pill" data-asset="msi-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-x86.msi">.msi</a> <a class="pill" data-asset="zip-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-x86.zip">.zip</a></td><td><a class="pill" data-asset="msi-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-arm64.msi">.msi</a> <a class="pill" data-asset="zip-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-arm64.zip">.zip</a></td></tr>
+          <tr><td><strong>Linux</strong> Debian, Ubuntu…</td><td><a class="pill" data-asset="deb-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise_0.5.0-1_amd64.deb">.deb</a></td><td><a class="pill" data-asset="deb-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise_0.5.0-1_i386.deb">.deb</a></td><td><a class="pill" data-asset="deb-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise_0.5.0-1_arm64.deb">.deb</a></td></tr>
+          <tr><td><strong>Linux</strong> Fedora, openSUSE…</td><td><a class="pill" data-asset="rpm-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise-0.5.0-1.x86_64.rpm">.rpm</a></td><td><a class="pill" data-asset="rpm-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise-0.5.0-1.i686.rpm">.rpm</a></td><td><a class="pill" data-asset="rpm-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise-0.5.0-1.aarch64.rpm">.rpm</a></td></tr>
         </tbody>
       </table>
-      <p class="sub" style="margin-top:18px">The Windows installer adds a Start menu shortcut and the <code>arpwise</code> command to your PATH.</p>
+      <p class="sub" style="margin-top:18px">The Windows installer adds a Start menu shortcut and the <code>arpwise</code> command to your PATH. Windows may warn about an unknown publisher because the installers are not signed yet: choose <em>More info</em>, then <em>Run anyway</em>.</p>
     </div>
   </section>
 
@@ -210,6 +214,63 @@ arpwise wake aa:bb:cc:dd:ee:ff</pre>
     <a href="https://github.com/Qoats/ArpWise/blob/main/LICENSE">GPL-3.0</a>
   </div>
 </footer>
+
+
+<script>
+  (function () {
+    // Direct download links: the files come straight from the release, no
+    // GitHub page in between. The table already holds working links for the
+    // version above; this script only upgrades them to the latest release and
+    // picks the right file for the visitor's system.
+    var ua = navigator.userAgent;
+    var arm = /aarch64|arm64|\bARM\b/i.test(ua);
+    var arch = arm ? "arm64" : (/WOW64|Win32|i[3-6]86/.test(ua) && !/Win64|x64/.test(ua) ? "x86" : "x64");
+    var os = /Windows/.test(ua) ? "windows" : (/Linux|X11/.test(ua) && !/Android/.test(ua) ? "linux" : "");
+
+    function setupMainButton() {
+      var button = document.getElementById("download-main");
+      if (!button || !os) return;
+      var key = os === "windows" ? "msi-" + arch : "deb-" + arch;
+      var link = document.querySelector('a[data-asset="' + key + '"]');
+      if (!link) return;
+      button.href = link.href;
+      button.textContent = os === "windows"
+        ? "Download for Windows" : "Download for Linux (.deb)";
+    }
+
+    function formatSize(bytes) {
+      return (bytes / 1048576).toFixed(1) + " MB";
+    }
+
+    fetch("https://api.github.com/repos/Qoats/ArpWise/releases/latest", {
+      headers: { Accept: "application/vnd.github+json" }
+    })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (release) {
+        if (!release || !release.assets) return;
+        var map = {};
+        var arches = { amd64: "x64", i386: "x86", arm64: "arm64", x86_64: "x64", i686: "x86", aarch64: "arm64", x64: "x64", x86: "x86" };
+        release.assets.forEach(function (a) {
+          var m;
+          if ((m = /^ArpWise-.+-windows-(x64|x86|arm64)\.(msi|zip)$/.exec(a.name))) map[m[2] + "-" + m[1]] = a;
+          else if ((m = /^arpwise_.+_(amd64|i386|arm64)\.deb$/.exec(a.name))) map["deb-" + arches[m[1]]] = a;
+          else if ((m = /^arpwise-.+\.(x86_64|i686|aarch64)\.rpm$/.exec(a.name))) map["rpm-" + arches[m[1]]] = a;
+        });
+        document.querySelectorAll("a[data-asset]").forEach(function (el) {
+          var a = map[el.dataset.asset];
+          if (!a) return;
+          el.href = a.browser_download_url;
+          el.title = a.name + " (" + formatSize(a.size) + ")";
+        });
+        var version = String(release.tag_name || "").replace(/^v/, "");
+        if (version) document.querySelectorAll("[data-version]").forEach(function (el) { el.textContent = version; });
+      })
+      .catch(function () { /* keep the static links */ })
+      .then(setupMainButton);
+
+    setupMainButton();
+  })();
+</script>
 
 </body>
 </html>
