@@ -1,23 +1,23 @@
 {
-    "version": "0.5.1",
+    "version": "0.5.2",
     "description": "Fast, driver-free local network scanner: devices, manufacturers, latency, history and Wake-on-LAN.",
     "homepage": "https://qoats.github.io/ArpWise/",
     "license": "GPL-3.0-only",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-x64.zip",
-            "hash": "59e43301e2ff0f5c9704a8d6a687369bfb9600c579e2cd5228cc201a0397ad07",
-            "extract_dir": "ArpWise-0.5.1-windows-x64"
+            "url": "https://github.com/Qoats/ArpWise/releases/download/v0.5.2/ArpWise-0.5.2-windows-x64.zip",
+            "hash": "98e8d439464315f22c6cd79d69ff97bd2f26a1a1fb6602b56043938a660ac7e4",
+            "extract_dir": "ArpWise-0.5.2-windows-x64"
         },
         "32bit": {
-            "url": "https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-x86.zip",
-            "hash": "5ae6e0a8b8b38d06c97f714897700bcc0489896544cc9602a22ff261275d36dc",
-            "extract_dir": "ArpWise-0.5.1-windows-x86"
+            "url": "https://github.com/Qoats/ArpWise/releases/download/v0.5.2/ArpWise-0.5.2-windows-x86.zip",
+            "hash": "12ccbb1399b00c8d63dc60e4f4366669b7e715757fc4420fbfc64c1fe416ea8d",
+            "extract_dir": "ArpWise-0.5.2-windows-x86"
         },
         "arm64": {
-            "url": "https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-arm64.zip",
-            "hash": "98ec3f123ac6dc1bffec3814eecbee4f5ca1436702e18d44dbb1a99b53e387f8",
-            "extract_dir": "ArpWise-0.5.1-windows-arm64"
+            "url": "https://github.com/Qoats/ArpWise/releases/download/v0.5.2/ArpWise-0.5.2-windows-arm64.zip",
+            "hash": "b4bd2b900dd0d17373fc400e46e37606b3e0d3417ae7a6359ab9f83660815229",
+            "extract_dir": "ArpWise-0.5.2-windows-arm64"
         }
     },
     "bin": [
