@@ -1310,7 +1310,7 @@ impl App {
                     }
                     let eased = p + 0.9 * (std::f32::consts::TAU * p).sin() / std::f32::consts::TAU;
                     let x = rect.left() + 6.0 + (rect.width() - 12.0) * eased.clamp(0.0, 1.0);
-                    ui.painter().circle_filled(egui::pos2(x, y), 2.5, ink.gamma_multiply(alpha as f32 / 255.0));
+                    ui.painter().circle_filled(egui::pos2(x, y), 1.5, ink.gamma_multiply(alpha as f32 / 255.0));
                 }
             });
     }
