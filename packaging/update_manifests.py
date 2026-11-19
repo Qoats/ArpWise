@@ -6,12 +6,14 @@
 Writes:
   bucket/arpwise.json                                   (Scoop bucket)
   packaging/winget/*.yaml                               (winget manifests)
+  docs/index.html                                       (fallback download links)
 
 The hashes come straight from the SHA256SUMS.txt published with the release,
 so they always match the files people download. Standard library only.
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -133,6 +135,25 @@ def write_winget(version, sums):
     print("wrote", folder.relative_to(ROOT))
 
 
+def update_site(version):
+    """Point the website's fallback download links at this version."""
+    page = ROOT / "docs" / "index.html"
+    if not page.exists():
+        return
+    html = page.read_text(encoding="utf-8")
+    v = r"\d+\.\d+\.\d+"
+    for pattern, replacement in [
+        (rf"releases/download/v{v}/", f"releases/download/v{version}/"),
+        (rf"ArpWise-{v}-windows", f"ArpWise-{version}-windows"),
+        (rf"arpwise_{v}-1_", f"arpwise_{version}-1_"),
+        (rf"arpwise-{v}-1\.", f"arpwise-{version}-1."),
+        (rf"<span data-version>{v}</span>", f"<span data-version>{version}</span>"),
+    ]:
+        html = re.sub(pattern, replacement, html)
+    page.write_text(html, encoding="utf-8")
+    print("updated", page.relative_to(ROOT))
+
+
 def main():
     if len(sys.argv) != 3:
         sys.exit(__doc__)
@@ -143,6 +164,7 @@ def main():
         sys.exit(f"SHA256SUMS.txt does not list: {', '.join(missing)}")
     write_scoop(version, sums)
     write_winget(version, sums)
+    update_site(version)
 
 
 if __name__ == "__main__":
