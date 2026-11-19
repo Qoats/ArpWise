@@ -25,13 +25,9 @@ ArpWise finds every device on your local network, tells you who made it and how 
 
 ## Screenshots
 
-| Network map | Light theme, violet accent |
+| Network map | Light theme |
 |---|---|
 | <img src="docs/screenshots/map.png" alt="Network map"> | <img src="docs/screenshots/light.png" alt="Light theme"> |
-
-| Settings | Loading screen |
-|---|---|
-| <img src="docs/screenshots/settings.png" alt="Settings"> | <img src="docs/screenshots/splash.png" alt="Qoats loading screen"> |
 
 *The screenshots use made-up devices (demo mode, see below), not a real network.*
 
@@ -47,15 +43,15 @@ ArpWise finds every device on your local network, tells you who made it and how 
 
 - IPv4 discovery with automatic local network detection
 - Manufacturer lookup from the IEEE registry (downloaded once, never bundled)
-- Latency of every device, with a colour indicator
+- Latency of every device, shown as a dot from bright to dim
 - Device history: first and last seen, new devices flagged, offline devices kept
 - Automatic rescans (30 s to 15 min)
 - Device type guess (router, network gear, computer, mobile, printer, media, IoT)
-- Network map: the router in the middle, devices around it, placed and coloured by latency
+- Network map: the router in the middle, devices around it, placed by latency
 - Latency graph per device, kept for the session
 - Search, filters (new, slow, no ping reply, by type), sortable columns, custom labels
 - Right-click actions: ping, traceroute, port scan, open in browser, Wake-on-LAN, copy IP or MAC
-- Rounded modern interface with menus (File, View, Tools, Help), dark or light theme and 6 accent colours
+- Rounded interface in pure black and white, with menus (File, View, Tools, Help) and a dark or light theme, no lines and no shadows
 - Many settings: zoom, compact rows, column visibility, ping timeout, "slow" threshold, auto-scan, scan at start, loading screen, always on top
 - Manual tools: Wake-on-LAN by MAC address, ping / traceroute / port scan of any address
 - Keyboard shortcuts: `F5` or `Ctrl+R` rescan, `Ctrl+F` search, `Ctrl+E` export
@@ -110,7 +106,7 @@ Devices are remembered between scans: new ones are flagged `NEW`, and known devi
 
 ## Graphical app
 
-Run `arpwise-gui`. The network is detected automatically. Click **Scanner**, select a device to see its details, or right-click it for quick actions. Use **Exporter…** to save the list and **Fabricants** to download the manufacturer database. Theme, accent colour, automatic rescans, columns and more are in the **Réglages** tab.
+Run `arpwise-gui`. The network is detected automatically. Click **Scanner**, select a device to see its details, or right-click it for quick actions. Use **Exporter…** to save the list and **Fabricants** to download the manufacturer database. Theme, zoom, automatic rescans, columns and more are in the **Réglages** tab.
 
 **Demo mode.** Set `ARPWISE_DEMO=1` to open the app with made-up devices and no scan. Handy for screenshots.
 

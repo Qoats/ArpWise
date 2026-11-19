@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::net::Ipv4Addr;
-use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -31,37 +31,42 @@ use arpwise::{
 /// seconds if the first scan is slow.
 const SPLASH_MIN: f32 = 5.0;
 
-/// Accent colours offered in the settings.
-const ACCENTS: [(&str, Color32); 6] = [
-    ("Bleu", Color32::from_rgb(0x2f, 0x7d, 0xf4)),
-    ("Violet", Color32::from_rgb(0x8b, 0x5c, 0xf6)),
-    ("Vert", Color32::from_rgb(0x1f, 0xb5, 0x6a)),
-    ("Orange", Color32::from_rgb(0xf0, 0x8a, 0x1c)),
-    ("Rose", Color32::from_rgb(0xe8, 0x4f, 0x9a)),
-    ("Cyan", Color32::from_rgb(0x12, 0xb0, 0xc9)),
-];
-
-static ACCENT_RGB: AtomicU32 = AtomicU32::new(0x2f7df4);
-
-fn accent() -> Color32 {
-    let v = ACCENT_RGB.load(Ordering::Relaxed);
-    Color32::from_rgb((v >> 16) as u8, (v >> 8) as u8, v as u8)
-}
-
-fn set_accent(index: usize) {
-    let color = ACCENTS.get(index).map_or(DEFAULT_ACCENT, |(_, c)| *c);
-    let v = ((color.r() as u32) << 16) | ((color.g() as u32) << 8) | color.b() as u32;
-    ACCENT_RGB.store(v, Ordering::Relaxed);
-}
 const SPLASH_MAX: f32 = 20.0;
 
-const BG: Color32 = Color32::from_rgb(0x0d, 0x13, 0x1b);
-const PANEL: Color32 = Color32::from_rgb(0x11, 0x18, 0x21);
-const CARD: Color32 = Color32::from_rgb(0x15, 0x1f, 0x2b);
-const DEFAULT_ACCENT: Color32 = Color32::from_rgb(0x2f, 0x7d, 0xf4);
-const WARN: Color32 = Color32::from_rgb(0xf5, 0xb9, 0x42);
-const GOOD: Color32 = Color32::from_rgb(0x3f, 0xb9, 0x50);
-const BAD: Color32 = Color32::from_rgb(0xf0, 0x5d, 0x5e);
+// ---- Black and white palette -----------------------------------------
+
+static DARK: AtomicBool = AtomicBool::new(true);
+
+fn is_dark() -> bool {
+    DARK.load(Ordering::Relaxed)
+}
+
+/// Main foreground: white on black, black on white.
+fn fg() -> Color32 {
+    if is_dark() { Color32::WHITE } else { Color32::BLACK }
+}
+
+/// Colour to draw on top of `fg()` (text inside a filled shape).
+fn inv() -> Color32 {
+    if is_dark() { Color32::BLACK } else { Color32::WHITE }
+}
+
+fn accent() -> Color32 {
+    fg()
+}
+
+/// Strong, medium and faint greys used where colour used to carry meaning.
+fn good() -> Color32 {
+    Color32::from_gray(if is_dark() { 0xF2 } else { 0x0D })
+}
+
+fn warn() -> Color32 {
+    Color32::from_gray(if is_dark() { 0xA6 } else { 0x59 })
+}
+
+fn bad() -> Color32 {
+    Color32::from_gray(if is_dark() { 0x6B } else { 0x99 })
+}
 
 /// One table row: a device seen now, or a known one that did not answer.
 #[derive(Clone)]
@@ -205,7 +210,6 @@ struct App {
 impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let settings = load_settings();
-        set_accent(settings.accent);
         apply_style(&cc.egui_ctx, settings.dark_theme);
         let (logo, splash_bg) = load_logo(&cc.egui_ctx);
         let (show_splash, scan_on_start, scale) =
@@ -672,8 +676,7 @@ impl App {
         if self.settings == *before {
             return;
         }
-        set_accent(self.settings.accent);
-        if self.settings.dark_theme != before.dark_theme || self.settings.accent != before.accent {
+        if self.settings.dark_theme != before.dark_theme {
             apply_style(ctx, self.settings.dark_theme);
         }
         if self.settings.ui_scale != before.ui_scale {
@@ -701,7 +704,7 @@ impl App {
                 if ui.button("Exporter en JSON…").clicked() {
                     act = Some(MenuAct::ExportJson);
                 }
-                ui.separator();
+                ui.add_space(4.0);
                 if ui.button("Quitter").clicked() {
                     act = Some(MenuAct::Quit);
                 }
@@ -710,10 +713,10 @@ impl App {
             ui.menu_button("Affichage", |ui| {
                 ui.radio_value(&mut self.view, View::List, "Liste");
                 ui.radio_value(&mut self.view, View::Map, "Carte");
-                ui.separator();
+                ui.add_space(4.0);
                 ui.radio_value(&mut self.settings.dark_theme, true, "Thème sombre");
                 ui.radio_value(&mut self.settings.dark_theme, false, "Thème clair");
-                ui.separator();
+                ui.add_space(4.0);
                 ui.menu_button("Zoom", |ui| {
                     for scale in [0.85_f32, 1.0, 1.15, 1.3, 1.5] {
                         ui.radio_value(
@@ -731,7 +734,7 @@ impl App {
                     ui.checkbox(&mut self.settings.col_latency, "Latence");
                     ui.checkbox(&mut self.settings.col_label, "Étiquette");
                 });
-                ui.separator();
+                ui.add_space(4.0);
                 ui.checkbox(&mut self.settings.compact, "Lignes compactes");
                 ui.checkbox(&mut self.settings.show_offline, "Appareils hors ligne");
                 ui.checkbox(&mut self.settings.always_on_top, "Toujours au premier plan");
@@ -744,14 +747,14 @@ impl App {
                 if ui.button("Mettre à jour les fabricants").clicked() {
                     act = Some(MenuAct::UpdateVendors);
                 }
-                ui.separator();
+                ui.add_space(4.0);
                 if ui.button("Réveiller une machine (Wake-on-LAN)…").clicked() {
                     act = Some(MenuAct::WolDialog);
                 }
                 if ui.button("Ping, traceroute, ports d’une adresse…").clicked() {
                     act = Some(MenuAct::HostTool);
                 }
-                ui.separator();
+                ui.add_space(4.0);
                 if ui.button("Ouvrir le dossier des données").clicked() {
                     act = Some(MenuAct::OpenData);
                 }
@@ -845,9 +848,9 @@ impl App {
             let scan = egui::Button::new(
                 RichText::new(if self.scanning { "Analyse…" } else { "Scanner" })
                     .strong()
-                    .color(Color32::WHITE),
+                    .color(inv()),
             )
-            .fill(accent())
+            .fill(fg())
             .min_size(egui::vec2(96.0, 28.0));
             if ui.add_enabled(!self.scanning, scan).clicked() {
                 self.start_scan(ctx);
@@ -893,8 +896,8 @@ impl App {
         };
 
         ui.horizontal(|ui| {
-            card(ui, "En ligne", &online.len().to_string(), GOOD);
-            card(ui, "Nouveaux", &self.new_macs.len().to_string(), WARN);
+            card(ui, "En ligne", &online.len().to_string(), good());
+            card(ui, "Nouveaux", &self.new_macs.len().to_string(), warn());
             card(ui, "Hors ligne", &offline.to_string(), muted(ui));
             card(ui, "Latence moyenne", &average, accent());
         });
@@ -1068,7 +1071,7 @@ impl App {
                             }
                             SortBy::Status => {
                                 if self.is_new(device) {
-                                    ui.label(RichText::new("NOUVEAU").color(WARN).strong());
+                                    ui.label(RichText::new("NOUVEAU").color(warn()).strong());
                                 }
                             }
                         });
@@ -1125,7 +1128,7 @@ impl App {
         let rect = response.rect;
         let center = rect.center();
         let radius = (rect.size().min_elem() * 0.5 - 40.0).max(80.0);
-        let line = ui.visuals().widgets.noninteractive.bg_stroke.color;
+        let line = Color32::from_gray(if is_dark() { 0x40 } else { 0xB8 });
         let text_color = ui.visuals().text_color();
         let weak = muted(ui);
         let slow = self.settings.slow_ms;
@@ -1180,7 +1183,7 @@ impl App {
             egui::Align2::CENTER_CENTER,
             hub_row.map_or("LAN", |r| r.kind.short()),
             egui::FontId::proportional(12.0),
-            Color32::WHITE,
+            inv(),
         );
         painter.text(
             center + egui::vec2(0.0, 34.0),
@@ -1212,7 +1215,7 @@ impl App {
                 egui::Align2::CENTER_CENTER,
                 row.kind.short(),
                 egui::FontId::proportional(9.0),
-                Color32::BLACK,
+                inv(),
             );
 
             let label = get_label(&self.labels, &row.device.mac);
@@ -1257,9 +1260,9 @@ impl App {
 
         // Legend.
         let legend = [
-            (GOOD, format!("< {:.0} ms", slow * 0.4)),
-            (WARN, format!("< {:.0} ms", slow * 1.6)),
-            (BAD, format!("≥ {:.0} ms", slow * 1.6)),
+            (good(), format!("< {:.0} ms", slow * 0.4)),
+            (warn(), format!("< {:.0} ms", slow * 1.6)),
+            (bad(), format!("≥ {:.0} ms", slow * 1.6)),
             (Color32::from_gray(0x6a), "hors ligne".to_string()),
         ];
         for (n, (color, text)) in legend.iter().enumerate() {
@@ -1318,7 +1321,7 @@ impl App {
             ui.selectable_value(&mut self.tab, Tab::Network, "Réseau");
             ui.selectable_value(&mut self.tab, Tab::Settings, "Réglages");
         });
-        ui.separator();
+        ui.add_space(4.0);
 
         egui::ScrollArea::vertical().show(ui, |ui| match self.tab {
             Tab::Device => self.device_tab(ui, ctx),
@@ -1336,7 +1339,7 @@ impl App {
 
         ui.horizontal(|ui| {
             ui.label(RichText::new("Appareil").size(14.0).strong());
-            let (text, color) = if row.online { ("en ligne", GOOD) } else { ("hors ligne", BAD) };
+            let (text, color) = if row.online { ("en ligne", good()) } else { ("hors ligne", bad()) };
             ui.label(RichText::new(format!("● {text}")).color(color));
         });
         ui.add_space(6.0);
@@ -1457,26 +1460,6 @@ impl App {
             ui.horizontal(|ui| {
                 ui.selectable_value(&mut self.settings.dark_theme, true, "Sombre");
                 ui.selectable_value(&mut self.settings.dark_theme, false, "Clair");
-            });
-            ui.add_space(6.0);
-
-            ui.label(RichText::new("Couleur d’accent").color(muted(ui)).small());
-            ui.horizontal_wrapped(|ui| {
-                for (index, (name, color)) in ACCENTS.iter().enumerate() {
-                    let (rect, response) =
-                        ui.allocate_exact_size(egui::vec2(28.0, 28.0), egui::Sense::click());
-                    ui.painter().circle_filled(rect.center(), 11.0, *color);
-                    if self.settings.accent == index {
-                        ui.painter().circle_stroke(
-                            rect.center(),
-                            14.0,
-                            egui::Stroke::new(2.0, ui.visuals().text_color()),
-                        );
-                    }
-                    if response.on_hover_text(*name).clicked() {
-                        self.settings.accent = index;
-                    }
-                }
             });
             ui.add_space(6.0);
 
@@ -1803,16 +1786,7 @@ impl App {
 }
 
 fn type_color(kind: DeviceType) -> Color32 {
-    match kind {
-        DeviceType::Router => accent(),
-        DeviceType::NetworkGear => Color32::from_rgb(0x2d, 0xb7, 0xb0),
-        DeviceType::Computer => Color32::from_rgb(0x6c, 0xa6, 0xe8),
-        DeviceType::Mobile => Color32::from_rgb(0xb0, 0x8a, 0xf0),
-        DeviceType::Printer => Color32::from_rgb(0xe8, 0x93, 0x4a),
-        DeviceType::Media => Color32::from_rgb(0xe8, 0x6c, 0xa8),
-        DeviceType::Iot => GOOD,
-        DeviceType::Unknown => Color32::from_gray(0x8a),
-    }
+    if kind == DeviceType::Unknown { bad() } else { fg() }
 }
 
 /// A small latency graph for one device.
@@ -1875,9 +1849,9 @@ fn muted(ui: &egui::Ui) -> Color32 {
 fn latency_color(latency: Option<f64>, slow: f64) -> Color32 {
     match latency {
         None => Color32::from_gray(0x80),
-        Some(ms) if ms < slow * 0.4 => GOOD,
-        Some(ms) if ms < slow * 1.6 => WARN,
-        Some(_) => BAD,
+        Some(ms) if ms < slow * 0.4 => good(),
+        Some(ms) if ms < slow * 1.6 => warn(),
+        Some(_) => bad(),
     }
 }
 
@@ -1886,16 +1860,13 @@ fn open_folder(path: &std::path::Path) {
     let _ = std::process::Command::new(program).arg(path).spawn();
 }
 
-/// Rounded card used for the main panels.
+/// Rounded card used for the main panels (no outline: a slightly lighter
+/// fill is enough).
 fn panel_frame(ui: &egui::Ui) -> egui::Frame {
     let dark = ui.visuals().dark_mode;
     egui::Frame::new()
-        .fill(if dark { PANEL } else { Color32::WHITE })
+        .fill(Color32::from_gray(if dark { 0x0F } else { 0xF3 }))
         .corner_radius(egui::CornerRadius::same(14))
-        .stroke(egui::Stroke::new(
-            1.0,
-            if dark { Color32::from_rgb(0x22, 0x2e, 0x3d) } else { Color32::from_rgb(0xd8, 0xdf, 0xe9) },
-        ))
         .inner_margin(egui::Margin::same(14))
 }
 
@@ -1919,9 +1890,8 @@ fn field(ui: &mut egui::Ui, name: &str, value: &str) {
 
 fn card(ui: &mut egui::Ui, title: &str, value: &str, color: Color32) {
     egui::Frame::new()
-        .fill(if ui.visuals().dark_mode { CARD } else { Color32::from_rgb(0xf0, 0xf3, 0xf8) })
+        .fill(Color32::from_gray(if ui.visuals().dark_mode { 0x1A } else { 0xE6 }))
         .corner_radius(egui::CornerRadius::same(12))
-        .stroke(egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color))
         .inner_margin(egui::Margin::symmetric(16, 10))
         .show(ui, |ui| {
             ui.vertical(|ui| {
@@ -1932,35 +1902,37 @@ fn card(ui: &mut egui::Ui, title: &str, value: &str, color: Color32) {
         });
 }
 
+/// Pure black and white, no outlines, no shadows.
 fn apply_style(ctx: &egui::Context, dark: bool) {
-    let acc = accent();
-    let mut visuals = if dark { egui::Visuals::dark() } else { egui::Visuals::light() };
+    DARK.store(dark, Ordering::Relaxed);
+    let grey = Color32::from_gray;
 
-    if dark {
-        visuals.panel_fill = BG;
-        visuals.window_fill = PANEL;
-        visuals.extreme_bg_color = Color32::from_rgb(0x0a, 0x11, 0x19);
-        visuals.faint_bg_color = Color32::from_rgb(0x15, 0x1e, 0x29);
-        let soft = Color32::from_rgb(0x1a, 0x25, 0x32);
-        visuals.widgets.inactive.bg_fill = soft;
-        visuals.widgets.inactive.weak_bg_fill = soft;
-        visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, Color32::from_rgb(0x2a, 0x37, 0x48));
-        visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(1.0, Color32::from_rgb(0x22, 0x2e, 0x3d));
-        let hover = Color32::from_rgb(0x23, 0x31, 0x42);
-        visuals.widgets.hovered.bg_fill = hover;
-        visuals.widgets.hovered.weak_bg_fill = hover;
+    // (page, popup/window, field, hover, pressed, striped row, selection, text)
+    let (page, popup, field, hover, pressed, striped, selection, text) = if dark {
+        (Color32::BLACK, grey(0x18), grey(0x1C), grey(0x2B), grey(0x3A), grey(0x12), grey(0x3A), Color32::WHITE)
     } else {
-        visuals.panel_fill = Color32::from_rgb(0xea, 0xee, 0xf4);
-        visuals.window_fill = Color32::WHITE;
-        visuals.extreme_bg_color = Color32::WHITE;
-        visuals.faint_bg_color = Color32::from_rgb(0xf3, 0xf6, 0xfa);
-        visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, Color32::from_rgb(0xc4, 0xcd, 0xda));
-        visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(1.0, Color32::from_rgb(0xd8, 0xdf, 0xe9));
-    }
+        (Color32::WHITE, grey(0xF6), grey(0xE4), grey(0xD6), grey(0xC8), grey(0xF7), grey(0xC8), Color32::BLACK)
+    };
 
-    visuals.selection.bg_fill = acc.gamma_multiply(if dark { 0.45 } else { 0.30 });
-    visuals.selection.stroke = egui::Stroke::new(1.0, acc);
-    visuals.hyperlink_color = acc;
+    let mut visuals = if dark { egui::Visuals::dark() } else { egui::Visuals::light() };
+    visuals.panel_fill = page;
+    visuals.window_fill = popup;
+    visuals.extreme_bg_color = field;
+    visuals.faint_bg_color = striped;
+    visuals.selection.bg_fill = selection;
+    visuals.selection.stroke = egui::Stroke::new(1.0, text);
+    visuals.hyperlink_color = text;
+
+    visuals.widgets.noninteractive.bg_fill = page;
+    visuals.widgets.noninteractive.weak_bg_fill = page;
+    visuals.widgets.inactive.bg_fill = field;
+    visuals.widgets.inactive.weak_bg_fill = field;
+    visuals.widgets.hovered.bg_fill = hover;
+    visuals.widgets.hovered.weak_bg_fill = hover;
+    visuals.widgets.open.bg_fill = hover;
+    visuals.widgets.open.weak_bg_fill = hover;
+    visuals.widgets.active.bg_fill = pressed;
+    visuals.widgets.active.weak_bg_fill = pressed;
 
     for widget in [
         &mut visuals.widgets.noninteractive,
@@ -1970,9 +1942,21 @@ fn apply_style(ctx: &egui::Context, dark: bool) {
         &mut visuals.widgets.open,
     ] {
         widget.corner_radius = egui::CornerRadius::same(8);
+        // No outlines anywhere: this also removes the lines between panels.
+        widget.bg_stroke = egui::Stroke::NONE;
+        widget.fg_stroke = egui::Stroke::new(1.0, text);
+        widget.expansion = 0.0;
     }
+    visuals.widgets.noninteractive.fg_stroke = egui::Stroke::new(1.0, text);
+
     visuals.window_corner_radius = egui::CornerRadius::same(14);
     visuals.menu_corner_radius = egui::CornerRadius::same(10);
+
+    // No shadows under menus, popups and windows, and no outline either.
+    visuals.window_shadow = egui::Shadow::NONE;
+    visuals.popup_shadow = egui::Shadow::NONE;
+    visuals.window_stroke = egui::Stroke::NONE;
+
     ctx.set_visuals(visuals);
 
     ctx.all_styles_mut(|style| {

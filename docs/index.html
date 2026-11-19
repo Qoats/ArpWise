@@ -10,27 +10,23 @@
   <meta property="og:image" content="assets/icon.png">
   <link rel="icon" type="image/png" href="assets/icon.png">
   <style>
+    /* Black and white only. No lines, no outlines, no shadows:
+       shapes are told apart by a slightly different grey. */
     :root {
-      --bg: #0b1017;
-      --panel: #111821;
-      --card: #151f2b;
-      --line: #222e3d;
-      --text: #e8eef6;
-      --muted: #94a3b6;
-      --accent: #2f7df4;
-      --accent-soft: rgba(47, 125, 244, .14);
-      --good: #3fb950;
+      --bg: #000000;
+      --panel: #0f0f0f;
+      --card: #1a1a1a;
+      --text: #ffffff;
+      --muted: #9a9a9a;
       --radius: 16px;
     }
     @media (prefers-color-scheme: light) {
       :root {
-        --bg: #eef2f7;
-        --panel: #ffffff;
-        --card: #f6f8fb;
-        --line: #d8dfe9;
-        --text: #17202c;
-        --muted: #5b6b80;
-        --accent-soft: rgba(47, 125, 244, .12);
+        --bg: #ffffff;
+        --panel: #f3f3f3;
+        --card: #e6e6e6;
+        --text: #000000;
+        --muted: #6a6a6a;
       }
     }
     * { box-sizing: border-box; }
@@ -41,70 +37,68 @@
       color: var(--text);
       font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+    a:hover { color: var(--muted); }
     .wrap { width: min(1080px, 100% - 32px); margin-inline: auto; }
 
     /* top bar */
-    header.top { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px);
-      background: color-mix(in srgb, var(--bg) 80%, transparent); border-bottom: 1px solid var(--line); }
-    header.top .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: var(--text); }
-    .brand img { width: 28px; height: 28px; border-radius: 7px; }
-    nav { margin-left: auto; display: flex; gap: 20px; font-size: 15px; }
-    nav a { color: var(--muted); }
-    nav a:hover { color: var(--text); text-decoration: none; }
+    header.top { position: sticky; top: 0; z-index: 10; background: var(--bg); }
+    header.top .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; }
+    .brand img { width: 30px; height: 30px; border-radius: 8px; }
+    nav { margin-left: auto; display: flex; gap: 22px; font-size: 15px; }
+    nav a { color: var(--muted); text-decoration: none; }
+    nav a:hover { color: var(--text); }
 
     /* hero */
     .hero { padding: 72px 0 40px; text-align: center; }
-    .hero img.icon { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 10px 40px rgba(47,125,244,.35); }
-    h1 { font-size: clamp(34px, 6vw, 56px); line-height: 1.1; margin: 22px 0 14px; letter-spacing: -.02em; }
-    h1 span { color: var(--accent); }
-    .lead { max-width: 640px; margin: 0 auto 28px; color: var(--muted); font-size: 18px; }
+    .hero img.icon { width: 104px; height: 104px; border-radius: 24px; }
+    h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.1; margin: 24px 0 14px; letter-spacing: -.02em; }
+    .lead { max-width: 640px; margin: 0 auto 30px; color: var(--muted); font-size: 18px; }
     .buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
-    .btn { display: inline-flex; align-items: center; padding: 12px 22px; border-radius: 12px; font-weight: 600;
-      border: 1px solid var(--line); color: var(--text); background: var(--panel); }
-    .btn:hover { text-decoration: none; border-color: var(--accent); }
-    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .btn.primary:hover { filter: brightness(1.08); }
-    .hero .shot { margin-top: 48px; }
+    .btn { display: inline-flex; align-items: center; padding: 13px 24px; border-radius: 12px; font-weight: 600;
+      background: var(--card); color: var(--text); text-decoration: none; }
+    .btn:hover { background: var(--panel); color: var(--text); }
+    .btn.primary { background: var(--text); color: var(--bg); }
+    .btn.primary:hover { background: var(--muted); color: var(--bg); }
+    .hero .shot { margin-top: 52px; }
 
-    .shot img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line);
-      box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+    .shot img { display: block; width: 100%; height: auto; border-radius: 14px; }
 
     /* sections */
-    section { padding: 56px 0; }
-    h2 { font-size: 30px; margin: 0 0 8px; letter-spacing: -.01em; }
-    .sub { color: var(--muted); margin: 0 0 32px; }
+    section { padding: 64px 0; }
+    h2 { font-size: 32px; margin: 0 0 8px; letter-spacing: -.01em; }
+    .sub { color: var(--muted); margin: 0 0 34px; }
 
     .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+    .card { background: var(--panel); border-radius: var(--radius); padding: 24px; }
     .card h3 { margin: 0 0 6px; font-size: 18px; }
     .card p { margin: 0; color: var(--muted); font-size: 15px; }
-    .tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 99px;
-      background: var(--accent-soft); color: var(--accent); margin-bottom: 10px; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 11px; border-radius: 99px;
+      background: var(--card); color: var(--muted); margin-bottom: 12px; }
 
-    .gallery { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .gallery { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
     .gallery figure { margin: 0; }
     .gallery figcaption { color: var(--muted); font-size: 14px; margin-top: 10px; text-align: center; }
 
-    table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line);
-      border-radius: var(--radius); overflow: hidden; }
-    th, td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--line); }
-    th { color: var(--muted); font-weight: 600; font-size: 14px; background: var(--card); }
-    tr:last-child td { border-bottom: 0; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
+    th, td { text-align: left; padding: 14px 18px; background: var(--panel); }
+    th { color: var(--muted); font-weight: 600; font-size: 14px; background: transparent; padding-bottom: 4px; }
+    td:first-child { border-radius: 12px 0 0 12px; }
+    td:last-child { border-radius: 0 12px 12px 0; }
     code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
-    pre { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px;
+    pre { background: var(--panel); border-radius: var(--radius); padding: 20px 22px;
       overflow-x: auto; font-size: 14px; line-height: 1.7; margin: 0; }
     pre .c { color: var(--muted); }
-    .pill { font-size: 13px; background: var(--card); border: 1px solid var(--line); padding: 2px 9px; border-radius: 8px; }
+    .pill { font-size: 13px; background: var(--card); padding: 3px 10px; border-radius: 8px; }
 
     .publisher { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; justify-content: center; text-align: center; }
     .publisher img { width: 270px; max-width: 100%; border-radius: 14px; }
     .publisher p { margin: 0; max-width: 420px; color: var(--muted); }
 
-    footer { border-top: 1px solid var(--line); padding: 28px 0 44px; color: var(--muted); font-size: 14px; text-align: center; }
-    footer a { color: var(--muted); text-decoration: underline; }
+    footer { padding: 32px 0 48px; color: var(--muted); font-size: 14px; text-align: center; }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
 
     @media (max-width: 640px) {
       nav { display: none; }
@@ -131,7 +125,7 @@
 <main>
   <div class="wrap hero">
     <img class="icon" src="assets/icon.png" alt="ArpWise icon">
-    <h1>See everything on <span>your network</span>, in one click.</h1>
+    <h1>See everything on your network, in one click.</h1>
     <p class="lead">ArpWise is a fast, driver-free network scanner for Windows and Linux. It lists every device on your network, tells you who made it and how fast it answers, and warns you when something new shows up.</p>
     <div class="buttons">
       <a class="btn primary" href="https://github.com/Qoats/ArpWise/releases/latest">Download</a>
@@ -149,9 +143,9 @@
         <div class="card"><span class="tag">Devices</span><h3>Know who is there</h3><p>IP, MAC address, hostname, manufacturer and a guess of the device type: router, phone, printer, TV, IoT…</p></div>
         <div class="card"><span class="tag">History</span><h3>Spot newcomers</h3><p>ArpWise remembers what it has seen. New devices are flagged, and known ones that left stay in the list as offline.</p></div>
         <div class="card"><span class="tag">Speed</span><h3>A full scan in seconds</h3><p>A whole /24 network is scanned in a few seconds, with the latency of every device measured in parallel.</p></div>
-        <div class="card"><span class="tag">Map</span><h3>See your network</h3><p>A radar-style map puts the router in the middle and every device around it, coloured by how fast it answers.</p></div>
+        <div class="card"><span class="tag">Map</span><h3>See your network</h3><p>A radar-style map puts the router in the middle and every device around it, placed by how fast it answers.</p></div>
         <div class="card"><span class="tag">Tools</span><h3>Act on a device</h3><p>Ping, traceroute, port scan, open in browser, copy, and wake a machine with Wake-on-LAN — from a right-click.</p></div>
-        <div class="card"><span class="tag">Your way</span><h3>Make it yours</h3><p>Dark or light, six accent colours, zoom, compact rows, columns you choose, automatic rescans and more.</p></div>
+        <div class="card"><span class="tag">Your way</span><h3>Make it yours</h3><p>Pure black and white, dark or light, zoom, compact rows, columns you choose, automatic rescans and more.</p></div>
         <div class="card"><span class="tag">Export</span><h3>CSV, JSON, command line</h3><p>Export the list, or script everything with the <code>arpwise</code> command in your terminal.</p></div>
       </div>
     </div>
@@ -163,9 +157,7 @@
       <p class="sub">Shown with made-up devices.</p>
       <div class="gallery">
         <figure class="shot"><img src="screenshots/map.png" alt="Network map" loading="lazy"><figcaption>Network map</figcaption></figure>
-        <figure class="shot"><img src="screenshots/light.png" alt="Light theme with a violet accent" loading="lazy"><figcaption>Light theme, violet accent</figcaption></figure>
-        <figure class="shot"><img src="screenshots/settings.png" alt="Settings panel" loading="lazy"><figcaption>Settings</figcaption></figure>
-        <figure class="shot"><img src="screenshots/splash.png" alt="Qoats loading screen" loading="lazy"><figcaption>Loading screen</figcaption></figure>
+        <figure class="shot"><img src="screenshots/light.png" alt="Light theme" loading="lazy"><figcaption>Light theme</figcaption></figure>
       </div>
     </div>
   </section>

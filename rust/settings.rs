@@ -9,8 +9,6 @@ use crate::config::config_dir;
 pub struct Settings {
     // Appearance
     pub dark_theme: bool,
-    /// Index of the accent colour in the GUI palette.
-    pub accent: usize,
     /// Interface zoom factor (1.0 = 100 %).
     pub ui_scale: f32,
     /// Tighter table rows.
@@ -45,7 +43,6 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             dark_theme: true,
-            accent: 0,
             ui_scale: 1.0,
             compact: false,
             always_on_top: false,
