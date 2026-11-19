@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Confidentialité – ArpWise</title>
+  <meta name="description" content="Ce qu’ArpWise enregistre, ce qu’il envoie, et à qui.">
+  <link rel="icon" type="image/png" href="assets/icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/icon.png" alt="">ArpWise</a>
+    <nav>
+      <a href="./#fonctions">Fonctions</a>
+      <a href="./#questions">Questions</a>
+      <a class="cta" href="./#telecharger">Télécharger</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap page">
+    <h1>Confidentialité</h1>
+    <p>En deux mots : ArpWise ne garde rien de toi. Voici le détail, sans rien cacher. Dernière mise à jour : 19 novembre 2026.</p>
+
+    <h2>Ce qu’ArpWise ne fait pas</h2>
+    <ul>
+      <li>Pas de compte, pas d’inscription.</li>
+      <li>Pas de publicité, pas d’outil de statistiques, pas de traçage.</li>
+      <li>Pas de serveur à nous : ArpWise n’envoie aucune donnée à Qoats.</li>
+    </ul>
+
+    <h2>Ce qui reste sur ton ordinateur</h2>
+    <p>ArpWise enregistre, dans le dossier <code>ArpWise</code> de ton profil (<code>%APPDATA%\ArpWise</code> sous Windows, <code>~/.config/ArpWise</code> sous Linux) :</p>
+    <ul>
+      <li>les <strong>étiquettes</strong> que tu donnes aux appareils ;</li>
+      <li>l’<strong>historique</strong> : pour chaque appareil vu, son adresse, son nom, son fabricant, et les dates de première et dernière apparition ;</li>
+      <li>tes <strong>réglages</strong> (thème, colonnes, zoom…) ;</li>
+      <li>la liste des <strong>fabricants</strong>, si tu l’as téléchargée.</li>
+    </ul>
+    <p>Rien de tout cela n’est envoyé nulle part. Tu peux supprimer ce dossier à tout moment.</p>
+
+    <h2>Les seules connexions que fait ArpWise</h2>
+    <ul>
+      <li><strong>ipapi.co</strong> – au lancement de l’appli et quand tu cliques sur « Actualiser » dans l’onglet Réseau, ArpWise demande ton adresse IP publique et sa localisation approximative. Ce service voit donc ton adresse IP, comme n’importe quel site que tu visites. Son fonctionnement dépend de sa propre politique de confidentialité.</li>
+      <li><strong>standards-oui.ieee.org</strong> – uniquement quand tu cliques sur « Fabricants » : ArpWise télécharge la liste publique des fabricants de cartes réseau. Aucune donnée n’est envoyée.</li>
+      <li><strong>Ton navigateur</strong> – quand tu cliques sur « Carte » (OpenStreetMap) ou sur « Ouvrir dans le navigateur », l’adresse s’ouvre dans ton navigateur.</li>
+    </ul>
+    <p>Le scan du réseau lui-même reste sur ton réseau local : les paquets ne sortent pas de chez toi.</p>
+
+    <h2>Ce site</h2>
+    <p>Ce site n’utilise ni cookie ni outil de statistiques. Il est hébergé par GitHub Pages, et les fichiers à télécharger sont fournis par GitHub : GitHub reçoit donc ton adresse IP, comme pour tout site qu’il héberge.</p>
+
+    <h2>Une question ?</h2>
+    <p>Écris à <a href="mailto:support@axim.ch">support@axim.ch</a>.</p>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="./">Accueil</a>
+    <a href="https://github.com/Qoats/ArpWise">Code source</a>
+    <a href="https://github.com/Qoats/ArpWise/blob/main/LICENSE">Licence GPL-3.0</a>
+  </div>
+</footer>
+
+</body>
+</html>

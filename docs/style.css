@@ -1,0 +1,137 @@
+/* ArpWise website — pure black and white. No lines, no outlines, no shadows:
+   shapes are told apart by a slightly different grey. */
+
+:root {
+  --bg: #000000;
+  --panel: #0f0f0f;
+  --card: #1a1a1a;
+  --text: #ffffff;
+  --muted: #a3a3a3;
+  --radius: 18px;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --panel: #f3f3f3;
+    --card: #e6e6e6;
+    --text: #000000;
+    --muted: #666666;
+  }
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 18px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+a:hover { color: var(--muted); }
+img { max-width: 100%; }
+.wrap { width: min(1100px, 100% - 36px); margin-inline: auto; }
+h1, h2, h3 { font-weight: 800; letter-spacing: -.025em; line-height: 1.1; margin: 0; }
+
+/* ---- header ---------------------------------------------------------- */
+header.top { position: sticky; top: 0; z-index: 10; background: var(--bg); }
+header.top .wrap { display: flex; align-items: center; gap: 22px; height: 68px; }
+.brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 21px; letter-spacing: -.02em; text-decoration: none; }
+.brand img { width: 34px; height: 34px; border-radius: 9px; }
+nav { margin-left: auto; display: flex; align-items: center; gap: 24px; font-size: 16px; font-weight: 600; }
+nav a { color: var(--muted); text-decoration: none; }
+nav a:hover { color: var(--text); }
+nav a.cta { color: var(--bg); background: var(--text); padding: 9px 18px; border-radius: 12px; }
+nav a.cta:hover { background: var(--muted); color: var(--bg); }
+
+/* ---- hero ------------------------------------------------------------ */
+.hero { padding: 64px 0 24px; }
+.eyebrow { color: var(--muted); font-weight: 700; font-size: 16px; margin: 0 0 14px; }
+.hero h1 { font-size: clamp(38px, 6.4vw, 66px); max-width: 15em; }
+.hero h1 span { color: var(--muted); }
+.lead { max-width: 640px; margin: 22px 0 30px; color: var(--muted); font-size: 20px; }
+.buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn { display: inline-flex; align-items: center; padding: 15px 26px; border-radius: 14px; font-weight: 700; font-size: 17px;
+  background: var(--card); color: var(--text); text-decoration: none; }
+.btn:hover { background: var(--panel); color: var(--text); }
+.btn.primary { background: var(--text); color: var(--bg); }
+.btn.primary:hover { background: var(--muted); color: var(--bg); }
+.note { margin: 18px 0 0; color: var(--muted); font-size: 15px; max-width: 640px; }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 26px 0 0; padding: 0; list-style: none; }
+.chips li { background: var(--panel); padding: 8px 18px; border-radius: 99px; font-size: 15px; font-weight: 600; }
+
+.window { margin: 46px 0 0; background: var(--panel); border-radius: 26px; padding: 14px; }
+.window img { display: block; width: 100%; height: auto; border-radius: 14px; }
+
+/* ---- sections -------------------------------------------------------- */
+section { padding: 72px 0; }
+h2 { font-size: clamp(30px, 4.4vw, 42px); margin-bottom: 12px; }
+.sub { color: var(--muted); margin: 0 0 38px; max-width: 640px; }
+
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+.card { background: var(--panel); border-radius: var(--radius); padding: 28px; }
+.card .ico { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 13px;
+  background: var(--card); font-size: 22px; margin-bottom: 16px; }
+.card h3 { font-size: 20px; margin-bottom: 8px; letter-spacing: -.01em; }
+.card p { margin: 0; color: var(--muted); font-size: 16px; }
+
+.gallery { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.gallery figure { margin: 0; }
+.gallery .window { margin: 0; }
+.gallery figcaption { color: var(--muted); font-size: 15px; margin-top: 14px; text-align: center; }
+
+.two { display: grid; gap: 40px; grid-template-columns: 1fr 1fr; align-items: start; }
+.facts { display: grid; gap: 14px; }
+.fact { background: var(--panel); border-radius: var(--radius); padding: 22px 26px; }
+.fact strong { display: block; font-size: 17px; margin-bottom: 4px; }
+.fact span { color: var(--muted); font-size: 15px; }
+
+/* ---- downloads ------------------------------------------------------- */
+table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+th, td { text-align: left; padding: 16px 20px; background: var(--panel); }
+th { color: var(--muted); font-weight: 600; font-size: 14px; background: transparent; padding-bottom: 2px; }
+td:first-child { border-radius: 14px 0 0 14px; }
+td:last-child { border-radius: 0 14px 14px 0; }
+.pill { display: inline-block; font-size: 14px; font-weight: 600; background: var(--card); padding: 5px 14px; border-radius: 9px; text-decoration: none; }
+a.pill:hover { background: var(--text); color: var(--bg); }
+
+code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+code { background: var(--card); padding: 2px 8px; border-radius: 7px; font-size: .9em; }
+pre { background: var(--panel); border-radius: var(--radius); padding: 22px 26px; overflow-x: auto;
+  font-size: 15px; line-height: 1.8; margin: 0; }
+pre .c { color: var(--muted); }
+
+/* ---- FAQ ------------------------------------------------------------- */
+details { background: var(--panel); border-radius: 16px; margin: 0 0 10px; }
+summary { cursor: pointer; list-style: none; padding: 20px 26px; font-weight: 700; display: flex; justify-content: space-between; gap: 16px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; font-weight: 400; font-size: 24px; line-height: 1; color: var(--muted); }
+details[open] summary::after { content: "–"; }
+details p { margin: 0; padding: 0 26px 22px; color: var(--muted); font-size: 17px; }
+
+/* ---- publisher / footer --------------------------------------------- */
+.publisher { display: flex; flex-wrap: wrap; align-items: center; gap: 30px; }
+.publisher img { width: 270px; border-radius: 14px; }
+.publisher p { margin: 0; max-width: 460px; color: var(--muted); }
+
+footer { padding: 40px 0 56px; color: var(--muted); font-size: 15px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+footer a { color: var(--muted); }
+footer a:hover { color: var(--text); }
+
+/* ---- text pages (privacy) ------------------------------------------- */
+.page { padding: 56px 0 24px; max-width: 760px; }
+.page h1 { font-size: clamp(34px, 5vw, 50px); margin-bottom: 14px; }
+.page h2 { font-size: 26px; margin: 44px 0 10px; }
+.page p, .page li { color: var(--muted); }
+.page li { margin-bottom: 8px; }
+.page strong { color: var(--text); }
+
+@media (max-width: 760px) {
+  nav a:not(.cta) { display: none; }
+  .hero { padding-top: 40px; }
+  .two { grid-template-columns: 1fr; gap: 24px; }
+  section { padding: 52px 0; }
+  th, td { padding: 12px; font-size: 14px; }
+}

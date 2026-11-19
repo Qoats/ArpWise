@@ -1,227 +1,183 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ArpWise — see everything on your network</title>
-  <meta name="description" content="ArpWise is a fast, driver-free network scanner for Windows and Linux. Find every device on your network, its manufacturer and latency, and get warned about new ones.">
-  <meta property="og:title" content="ArpWise — see everything on your network">
-  <meta property="og:description" content="A fast, driver-free network scanner for Windows and Linux, made by Qoats.">
+  <title>ArpWise – tout ce qui est branché sur ton réseau, en un clic</title>
+  <meta name="description" content="ArpWise est un scanner de réseau rapide, sans pilote, pour Windows et Linux. Il liste tous les appareils de ton réseau, leur fabricant, leur vitesse, et te prévient quand un nouveau arrive.">
+  <meta property="og:title" content="ArpWise – tout ce qui est branché sur ton réseau, en un clic">
+  <meta property="og:description" content="Un scanner de réseau rapide, sans pilote, pour Windows et Linux. Gratuit et open source.">
   <meta property="og:image" content="assets/icon.png">
   <link rel="icon" type="image/png" href="assets/icon.png">
-  <style>
-    /* Black and white only. No lines, no outlines, no shadows:
-       shapes are told apart by a slightly different grey. */
-    :root {
-      --bg: #000000;
-      --panel: #0f0f0f;
-      --card: #1a1a1a;
-      --text: #ffffff;
-      --muted: #9a9a9a;
-      --radius: 16px;
-    }
-    @media (prefers-color-scheme: light) {
-      :root {
-        --bg: #ffffff;
-        --panel: #f3f3f3;
-        --card: #e6e6e6;
-        --text: #000000;
-        --muted: #6a6a6a;
-      }
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    }
-    a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
-    a:hover { color: var(--muted); }
-    .wrap { width: min(1080px, 100% - 32px); margin-inline: auto; }
-
-    /* top bar */
-    header.top { position: sticky; top: 0; z-index: 10; background: var(--bg); }
-    header.top .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; }
-    .brand img { width: 30px; height: 30px; border-radius: 8px; }
-    nav { margin-left: auto; display: flex; gap: 22px; font-size: 15px; }
-    nav a { color: var(--muted); text-decoration: none; }
-    nav a:hover { color: var(--text); }
-
-    /* hero */
-    .hero { padding: 72px 0 40px; text-align: center; }
-    .hero img.icon { width: 104px; height: 104px; border-radius: 24px; }
-    h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.1; margin: 24px 0 14px; letter-spacing: -.02em; }
-    .lead { max-width: 640px; margin: 0 auto 30px; color: var(--muted); font-size: 18px; }
-    .buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
-    .btn { display: inline-flex; align-items: center; padding: 13px 24px; border-radius: 12px; font-weight: 600;
-      background: var(--card); color: var(--text); text-decoration: none; }
-    .btn:hover { background: var(--panel); color: var(--text); }
-    .btn.primary { background: var(--text); color: var(--bg); }
-    .btn.primary:hover { background: var(--muted); color: var(--bg); }
-    .hero .shot { margin-top: 52px; }
-
-    .shot img { display: block; width: 100%; height: auto; border-radius: 14px; }
-
-    /* sections */
-    section { padding: 64px 0; }
-    h2 { font-size: 32px; margin: 0 0 8px; letter-spacing: -.01em; }
-    .sub { color: var(--muted); margin: 0 0 34px; }
-
-    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-    .card { background: var(--panel); border-radius: var(--radius); padding: 24px; }
-    .card h3 { margin: 0 0 6px; font-size: 18px; }
-    .card p { margin: 0; color: var(--muted); font-size: 15px; }
-    .tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 11px; border-radius: 99px;
-      background: var(--card); color: var(--muted); margin-bottom: 12px; }
-
-    .gallery { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-    .gallery figure { margin: 0; }
-    .gallery figcaption { color: var(--muted); font-size: 14px; margin-top: 10px; text-align: center; }
-
-    table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
-    th, td { text-align: left; padding: 14px 18px; background: var(--panel); }
-    th { color: var(--muted); font-weight: 600; font-size: 14px; background: transparent; padding-bottom: 4px; }
-    td:first-child { border-radius: 12px 0 0 12px; }
-    td:last-child { border-radius: 0 12px 12px 0; }
-    code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
-    pre { background: var(--panel); border-radius: var(--radius); padding: 20px 22px;
-      overflow-x: auto; font-size: 14px; line-height: 1.7; margin: 0; }
-    pre .c { color: var(--muted); }
-    .pill { display: inline-block; font-size: 13px; background: var(--card); padding: 3px 12px; border-radius: 8px; text-decoration: none; }
-    a.pill:hover { background: var(--text); color: var(--bg); }
-    .other { margin: 16px 0 0; font-size: 14px; }
-    .other a { color: var(--muted); }
-
-    .publisher { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; justify-content: center; text-align: center; }
-    .publisher img { width: 270px; max-width: 100%; border-radius: 14px; }
-    .publisher p { margin: 0; max-width: 420px; color: var(--muted); }
-
-    footer { padding: 32px 0 48px; color: var(--muted); font-size: 14px; text-align: center; }
-    footer a { color: var(--muted); }
-    footer a:hover { color: var(--text); }
-
-    @media (max-width: 640px) {
-      nav { display: none; }
-      .hero { padding-top: 48px; }
-      th, td { padding: 12px; font-size: 14px; }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="#"><img src="assets/icon.png" alt="">ArpWise</a>
+    <a class="brand" href="./"><img src="assets/icon.png" alt="">ArpWise</a>
     <nav>
-      <a href="#features">Features</a>
-      <a href="#screens">Screenshots</a>
-      <a href="#download">Download</a>
-      <a href="#cli">Command line</a>
-      <a href="https://github.com/Qoats/ArpWise">GitHub</a>
+      <a href="#fonctions">Fonctions</a>
+      <a href="#questions">Questions</a>
+      <a class="cta" href="#telecharger">Télécharger</a>
     </nav>
   </div>
 </header>
 
 <main>
   <div class="wrap hero">
-    <img class="icon" src="assets/icon.png" alt="ArpWise icon">
-    <h1>See everything on your network, in one click.</h1>
-    <p class="lead">ArpWise is a fast, driver-free network scanner for Windows and Linux. It lists every device on your network, tells you who made it and how fast it answers, and warns you when something new shows up.</p>
+    <p class="eyebrow">ArpWise : ARP, le protocole du réseau local, et « wise », malin.</p>
+    <h1>Tout ce qui est branché sur ton réseau, <span>en un clic.</span></h1>
+    <p class="lead">Les appareils de ta maison ou de ton bureau, leur fabricant, leur vitesse de réponse, et une alerte quand un nouveau arrive. Gratuit, sans compte, sans pub, et sans rien d’autre à installer.</p>
     <div class="buttons">
-      <a class="btn primary" id="download-main" href="#download">Download</a>
-      <a class="btn" href="https://github.com/Qoats/ArpWise">View on GitHub</a>
+      <a class="btn primary" id="download-main" href="#telecharger">Télécharger</a>
+      <a class="btn" href="https://github.com/Qoats/ArpWise">Voir le code source</a>
     </div>
-    <p class="other" id="download-other"><a href="#download">Other systems and formats</a></p>
-    <div class="shot"><img src="screenshots/list.png" alt="ArpWise showing the list of devices on a network" width="1296" height="799"></div>
+    <p class="note">Pour Windows et Linux. Windows 32 bits, ARM64, <code>.deb</code> et <code>.rpm</code> : <a href="#telecharger">tous les téléchargements</a>.</p>
+    <ul class="chips">
+      <li>Sans pilote</li>
+      <li>Sans compte</li>
+      <li>Sans publicité</li>
+      <li>Open source</li>
+    </ul>
+    <div class="window"><img src="screenshots/list.png" alt="ArpWise affiche la liste des appareils d’un réseau" width="1296" height="799"></div>
   </div>
 
-  <section id="features">
+  <section id="fonctions">
     <div class="wrap">
-      <h2>Built to be simple and quick</h2>
-      <p class="sub">Written in Rust. One small executable. Nothing to install first.</p>
+      <h2>Tout ce qu’il faut pour voir ton réseau</h2>
+      <p class="sub">Écrit en Rust : un seul petit programme, rapide, qui fait tout sur ton ordinateur.</p>
       <div class="grid">
-        <div class="card"><span class="tag">No drivers</span><h3>Nothing else to install</h3><p>No Npcap, no Wireshark. ArpWise uses the native ARP API on Windows and the kernel neighbour table on Linux.</p></div>
-        <div class="card"><span class="tag">Devices</span><h3>Know who is there</h3><p>IP, MAC address, hostname, manufacturer and a guess of the device type: router, phone, printer, TV, IoT…</p></div>
-        <div class="card"><span class="tag">History</span><h3>Spot newcomers</h3><p>ArpWise remembers what it has seen. New devices are flagged, and known ones that left stay in the list as offline.</p></div>
-        <div class="card"><span class="tag">Speed</span><h3>A full scan in seconds</h3><p>A whole /24 network is scanned in a few seconds, with the latency of every device measured in parallel.</p></div>
-        <div class="card"><span class="tag">Map</span><h3>See your network</h3><p>A radar-style map puts the router in the middle and every device around it, placed by how fast it answers.</p></div>
-        <div class="card"><span class="tag">Tools</span><h3>Act on a device</h3><p>Ping, traceroute, port scan, open in browser, copy, and wake a machine with Wake-on-LAN — from a right-click.</p></div>
-        <div class="card"><span class="tag">Your way</span><h3>Make it yours</h3><p>Pure black and white, dark or light, zoom, compact rows, columns you choose, automatic rescans and more.</p></div>
-        <div class="card"><span class="tag">Export</span><h3>CSV, JSON, command line</h3><p>Export the list, or script everything with the <code>arpwise</code> command in your terminal.</p></div>
+        <div class="card"><div class="ico">◎</div><h3>Tous tes appareils</h3><p>Adresse IP, adresse MAC, nom et fabricant. ArpWise devine même le genre : box, ordinateur, téléphone, imprimante, télé…</p></div>
+        <div class="card"><div class="ico">⏱</div><h3>Leur vitesse de réponse</h3><p>La latence de chaque appareil est mesurée en même temps, avec un petit graphique pour suivre son évolution.</p></div>
+        <div class="card"><div class="ico">✦</div><h3>Les nouveaux venus</h3><p>ArpWise se souvient de ce qu’il a déjà vu. Un appareil inconnu est signalé, et ceux qui sont partis restent dans la liste, grisés.</p></div>
+        <div class="card"><div class="ico">⌖</div><h3>Une carte du réseau</h3><p>Ta box au milieu, les appareils autour, placés selon leur vitesse de réponse. On voit d’un coup d’œil qui va bien et qui traîne.</p></div>
+        <div class="card"><div class="ico">➜</div><h3>Des actions en un clic</h3><p>Ping, traceroute, scan de ports, ouvrir l’appareil dans le navigateur, copier l’adresse, ou le réveiller à distance (Wake-on-LAN).</p></div>
+        <div class="card"><div class="ico">⇩</div><h3>Export et ligne de commande</h3><p>Enregistre la liste en CSV ou JSON, ou pilote tout depuis ton terminal avec la commande <code>arpwise</code>.</p></div>
       </div>
     </div>
   </section>
 
-  <section id="screens">
+  <section id="apercu">
     <div class="wrap">
-      <h2>Screenshots</h2>
-      <p class="sub">Shown with made-up devices.</p>
+      <h2>À quoi ça ressemble</h2>
+      <p class="sub">Tout en noir et blanc, en thème sombre ou clair. Les appareils montrés ici sont inventés.</p>
       <div class="gallery">
-        <figure class="shot"><img src="screenshots/map.png" alt="Network map" loading="lazy"><figcaption>Network map</figcaption></figure>
-        <figure class="shot"><img src="screenshots/light.png" alt="Light theme" loading="lazy"><figcaption>Light theme</figcaption></figure>
+        <figure><div class="window"><img src="screenshots/map.png" alt="La carte du réseau" loading="lazy"></div><figcaption>La carte du réseau</figcaption></figure>
+        <figure><div class="window"><img src="screenshots/light.png" alt="Le thème clair" loading="lazy"></div><figcaption>Le thème clair</figcaption></figure>
       </div>
     </div>
   </section>
 
-  <section id="download">
+  <section id="vie-privee">
+    <div class="wrap two">
+      <div>
+        <h2>Ce qu’ArpWise garde de toi : rien</h2>
+        <p class="sub">Pas de compte, pas de publicité, pas d’outil de statistiques. ArpWise n’a même pas de serveur qui reçoive tes données : tout se passe sur ton ordinateur.</p>
+        <p><a href="confidentialite.html">Lire la politique de confidentialité</a></p>
+      </div>
+      <div class="facts">
+        <div class="fact"><strong>Tes appareils restent chez toi</strong><span>La liste, l’historique et tes étiquettes sont enregistrés sur ton ordinateur. Rien n’est envoyé à personne.</span></div>
+        <div class="fact"><strong>Deux connexions, et c’est tout</strong><span>Ton adresse IP publique est demandée à ipapi.co (onglet Réseau), et la liste des fabricants est téléchargée chez l’IEEE quand tu cliques sur « Fabricants ».</span></div>
+        <div class="fact"><strong>Du code ouvert</strong><span>Tout le code est public, sous licence GPL-3.0 : tu peux vérifier ce qu’il fait.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="telecharger">
     <div class="wrap">
-      <h2>Download</h2>
-      <p class="sub">Click the file for your system: the download starts right away. Version <span data-version>0.5.0</span>.</p>
+      <h2>Télécharger</h2>
+      <p class="sub">Clique sur le fichier qui correspond à ton système : le téléchargement démarre tout de suite. Version <span data-version>0.5.1</span>.</p>
       <table>
-        <thead><tr><th>System</th><th>64-bit</th><th>32-bit</th><th>ARM64</th></tr></thead>
+        <thead><tr><th>Système</th><th>64 bits</th><th>32 bits</th><th>ARM64</th></tr></thead>
         <tbody>
-          <tr><td><strong>Windows</strong></td><td><a class="pill" data-asset="msi-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-x64.msi">.msi</a> <a class="pill" data-asset="zip-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-x64.zip">.zip</a></td><td><a class="pill" data-asset="msi-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-x86.msi">.msi</a> <a class="pill" data-asset="zip-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-x86.zip">.zip</a></td><td><a class="pill" data-asset="msi-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-arm64.msi">.msi</a> <a class="pill" data-asset="zip-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/ArpWise-0.5.0-windows-arm64.zip">.zip</a></td></tr>
-          <tr><td><strong>Linux</strong> Debian, Ubuntu…</td><td><a class="pill" data-asset="deb-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise_0.5.0-1_amd64.deb">.deb</a></td><td><a class="pill" data-asset="deb-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise_0.5.0-1_i386.deb">.deb</a></td><td><a class="pill" data-asset="deb-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise_0.5.0-1_arm64.deb">.deb</a></td></tr>
-          <tr><td><strong>Linux</strong> Fedora, openSUSE…</td><td><a class="pill" data-asset="rpm-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise-0.5.0-1.x86_64.rpm">.rpm</a></td><td><a class="pill" data-asset="rpm-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise-0.5.0-1.i686.rpm">.rpm</a></td><td><a class="pill" data-asset="rpm-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.0/arpwise-0.5.0-1.aarch64.rpm">.rpm</a></td></tr>
+          <tr><td><strong>Windows</strong></td><td><a class="pill" data-asset="msi-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-x64.msi">.msi</a> <a class="pill" data-asset="zip-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-x64.zip">.zip</a></td><td><a class="pill" data-asset="msi-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-x86.msi">.msi</a> <a class="pill" data-asset="zip-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-x86.zip">.zip</a></td><td><a class="pill" data-asset="msi-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-arm64.msi">.msi</a> <a class="pill" data-asset="zip-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-arm64.zip">.zip</a></td></tr>
+          <tr><td><strong>Linux</strong> Debian, Ubuntu…</td><td><a class="pill" data-asset="deb-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/arpwise_0.5.1-1_amd64.deb">.deb</a></td><td><a class="pill" data-asset="deb-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/arpwise_0.5.1-1_i386.deb">.deb</a></td><td><a class="pill" data-asset="deb-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/arpwise_0.5.1-1_arm64.deb">.deb</a></td></tr>
+          <tr><td><strong>Linux</strong> Fedora, openSUSE…</td><td><a class="pill" data-asset="rpm-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/arpwise-0.5.1-1.x86_64.rpm">.rpm</a></td><td><a class="pill" data-asset="rpm-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/arpwise-0.5.1-1.i686.rpm">.rpm</a></td><td><a class="pill" data-asset="rpm-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/arpwise-0.5.1-1.aarch64.rpm">.rpm</a></td></tr>
         </tbody>
       </table>
-      <p class="sub" style="margin-top:18px">The Windows installer adds a Start menu shortcut and the <code>arpwise</code> command to your PATH. Windows may warn about an unknown publisher because the installers are not signed yet: choose <em>More info</em>, then <em>Run anyway</em>.</p>
+      <p class="sub" style="margin-top:20px">L’installateur Windows ajoute un raccourci au menu Démarrer et la commande <code>arpwise</code> à ton PATH. Windows peut afficher « éditeur inconnu », car les installateurs ne sont pas encore signés : clique sur <em>Informations complémentaires</em>, puis <em>Exécuter quand même</em>.</p>
     </div>
   </section>
 
-  <section id="cli">
+  <section id="ligne-de-commande">
     <div class="wrap">
-      <h2>Command line</h2>
-      <p class="sub">Everything the app does can be scripted.</p>
-<pre><span class="c"># scan the detected local network</span>
+      <h2>En ligne de commande</h2>
+      <p class="sub">Tout ce que fait l’appli peut aussi se faire depuis un terminal.</p>
+<pre><span class="c"># scanner le réseau détecté automatiquement</span>
 arpwise
-<span class="c"># scan a specific network, add latency, export to a file</span>
-arpwise --network 192.168.1.0/24 --ping --output devices.csv
-<span class="c"># download the manufacturer database (once)</span>
+<span class="c"># scanner un réseau précis, mesurer la latence, exporter</span>
+arpwise --network 192.168.1.0/24 --ping --output appareils.csv
+<span class="c"># télécharger la liste des fabricants (une seule fois)</span>
 arpwise --update-vendors
-<span class="c"># scan some ports on a host you own, wake a machine</span>
+<span class="c"># scanner des ports d'une machine à toi, réveiller un ordinateur</span>
 arpwise ports 192.168.1.10 --range 22,80,8000-8100
 arpwise wake aa:bb:cc:dd:ee:ff</pre>
     </div>
   </section>
 
+  <section id="questions">
+    <div class="wrap">
+      <h2>Questions fréquentes</h2>
+      <p class="sub">Les réponses courtes.</p>
+      <details>
+        <summary>ArpWise est-il gratuit ?</summary>
+        <p>Oui, entièrement : pas de publicité, pas de compte, pas d’abonnement. Le code est ouvert, sous licence GPL-3.0.</p>
+      </details>
+      <details>
+        <summary>Qu’est-ce qu’il voit, au juste ?</summary>
+        <p>Les appareils du même réseau local que ton ordinateur : ta box, les ordinateurs, les téléphones, les imprimantes, les objets connectés… Les appareils d’un autre réseau, derrière un routeur, ne sont pas visibles : c’est une limite du protocole ARP.</p>
+      </details>
+      <details>
+        <summary>Faut-il installer un pilote ou être administrateur ?</summary>
+        <p>Non. ArpWise utilise ce que ton système a déjà : l’API <code>SendARP</code> sous Windows, la table ARP du système sous Linux. Pas de Npcap, pas de Wireshark.</p>
+      </details>
+      <details>
+        <summary>Pourquoi Windows parle d’« éditeur inconnu » ?</summary>
+        <p>Les installateurs ne sont pas encore signés, ce qui demande un certificat payant. Clique sur « Informations complémentaires », puis « Exécuter quand même ». Les sommes de contrôle sont publiées avec chaque version pour vérifier les fichiers.</p>
+      </details>
+      <details>
+        <summary>Ça marche sur Mac ?</summary>
+        <p>Pas pour l’instant : ArpWise fonctionne sous Windows (64 bits, 32 bits et ARM64) et sous Linux (x64, 32 bits et ARM64).</p>
+      </details>
+      <details>
+        <summary>Puis-je l’utiliser sur n’importe quel réseau ?</summary>
+        <p>Seulement sur un réseau qui t’appartient, ou que tu as le droit d’inspecter. ArpWise refuse d’ailleurs de scanner autre chose que des réseaux privés.</p>
+      </details>
+      <details>
+        <summary>Où sont enregistrées mes données ?</summary>
+        <p>Dans le dossier <code>ArpWise</code> de ton profil : <code>%APPDATA%\ArpWise</code> sous Windows, <code>~/.config/ArpWise</code> sous Linux. Tu peux l’ouvrir depuis le menu Outils.</p>
+      </details>
+      <details>
+        <summary>Une question, un problème ?</summary>
+        <p>Écris à <a href="mailto:support@axim.ch">support@axim.ch</a>.</p>
+      </details>
+    </div>
+  </section>
+
   <section>
     <div class="wrap publisher">
-      <img src="assets/qoats-logo.jpg" alt="Qoats — software with a spine" loading="lazy">
-      <p>ArpWise is made by <strong>Qoats</strong> — software with a spine. Free and open source under the GPL-3.0 license.<br>
-      Questions? <a href="mailto:support@axim.ch">support@axim.ch</a></p>
+      <img src="assets/qoats-logo.jpg" alt="Qoats – software with a spine" loading="lazy">
+      <p>ArpWise est fait par <strong>Qoats</strong> – software with a spine. Gratuit et open source, sous licence GPL-3.0.</p>
     </div>
   </section>
 </main>
 
 <footer>
   <div class="wrap">
-    Use ArpWise only on networks you own or are authorized to inspect. ·
-    <a href="https://github.com/Qoats/ArpWise">Source code</a> ·
-    <a href="https://github.com/Qoats/ArpWise/blob/main/LICENSE">GPL-3.0</a>
+    <span>Utilise ArpWise seulement sur un réseau qui t’appartient ou que tu as le droit d’inspecter.</span>
+    <a href="confidentialite.html">Confidentialité</a>
+    <a href="https://github.com/Qoats/ArpWise">Code source</a>
+    <a href="https://github.com/Qoats/ArpWise/blob/main/LICENSE">Licence GPL-3.0</a>
   </div>
 </footer>
 
-
 <script>
   (function () {
-    // Direct download links: the files come straight from the release, no
-    // GitHub page in between. The table already holds working links for the
-    // version above; this script only upgrades them to the latest release and
-    // picks the right file for the visitor's system.
+    // Téléchargement direct : les fichiers viennent tout de suite de la release,
+    // sans page intermédiaire. Le tableau contient déjà des liens qui marchent ;
+    // ce script ne fait que les passer à la dernière version et choisir le bon
+    // fichier pour le système du visiteur.
     var ua = navigator.userAgent;
     var arm = /aarch64|arm64|\bARM\b/i.test(ua);
     var arch = arm ? "arm64" : (/WOW64|Win32|i[3-6]86/.test(ua) && !/Win64|x64/.test(ua) ? "x86" : "x64");
@@ -234,12 +190,7 @@ arpwise wake aa:bb:cc:dd:ee:ff</pre>
       var link = document.querySelector('a[data-asset="' + key + '"]');
       if (!link) return;
       button.href = link.href;
-      button.textContent = os === "windows"
-        ? "Download for Windows" : "Download for Linux (.deb)";
-    }
-
-    function formatSize(bytes) {
-      return (bytes / 1048576).toFixed(1) + " MB";
+      button.textContent = os === "windows" ? "Télécharger pour Windows" : "Télécharger pour Linux (.deb)";
     }
 
     fetch("https://api.github.com/repos/Qoats/ArpWise/releases/latest", {
@@ -260,17 +211,16 @@ arpwise wake aa:bb:cc:dd:ee:ff</pre>
           var a = map[el.dataset.asset];
           if (!a) return;
           el.href = a.browser_download_url;
-          el.title = a.name + " (" + formatSize(a.size) + ")";
+          el.title = a.name + " (" + (a.size / 1048576).toFixed(1) + " Mo)";
         });
         var version = String(release.tag_name || "").replace(/^v/, "");
         if (version) document.querySelectorAll("[data-version]").forEach(function (el) { el.textContent = version; });
       })
-      .catch(function () { /* keep the static links */ })
+      .catch(function () { /* on garde les liens du tableau */ })
       .then(setupMainButton);
 
     setupMainButton();
   })();
 </script>
-
 </body>
 </html>
