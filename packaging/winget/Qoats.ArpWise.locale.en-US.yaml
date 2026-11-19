@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: Qoats.ArpWise
+PackageVersion: 0.5.1
+PackageLocale: en-US
+Publisher: Qoats
+PublisherUrl: https://qoats.github.io/ArpWise/
+PublisherSupportUrl: https://github.com/Qoats/ArpWise/issues
+PackageName: ArpWise
+PackageUrl: https://qoats.github.io/ArpWise/
+License: GPL-3.0-only
+LicenseUrl: https://github.com/Qoats/ArpWise/blob/main/LICENSE
+ShortDescription: Fast, driver-free local network scanner: devices, manufacturers, latency, history and Wake-on-LAN.
+Moniker: arpwise
+Tags:
+- network
+- scanner
+- arp
+- lan
+- wake-on-lan
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

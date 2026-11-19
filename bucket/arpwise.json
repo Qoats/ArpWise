@@ -1,0 +1,54 @@
+{
+    "version": "0.5.1",
+    "description": "Fast, driver-free local network scanner: devices, manufacturers, latency, history and Wake-on-LAN.",
+    "homepage": "https://qoats.github.io/ArpWise/",
+    "license": "GPL-3.0-only",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-x64.zip",
+            "hash": "59e43301e2ff0f5c9704a8d6a687369bfb9600c579e2cd5228cc201a0397ad07",
+            "extract_dir": "ArpWise-0.5.1-windows-x64"
+        },
+        "32bit": {
+            "url": "https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-x86.zip",
+            "hash": "5ae6e0a8b8b38d06c97f714897700bcc0489896544cc9602a22ff261275d36dc",
+            "extract_dir": "ArpWise-0.5.1-windows-x86"
+        },
+        "arm64": {
+            "url": "https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-arm64.zip",
+            "hash": "98ec3f123ac6dc1bffec3814eecbee4f5ca1436702e18d44dbb1a99b53e387f8",
+            "extract_dir": "ArpWise-0.5.1-windows-arm64"
+        }
+    },
+    "bin": [
+        "arpwise.exe"
+    ],
+    "shortcuts": [
+        [
+            "arpwise-gui.exe",
+            "ArpWise"
+        ]
+    ],
+    "checkver": {
+        "github": "https://github.com/Qoats/ArpWise"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/Qoats/ArpWise/releases/download/v$version/ArpWise-$version-windows-x64.zip",
+                "extract_dir": "ArpWise-$version-windows-x64"
+            },
+            "32bit": {
+                "url": "https://github.com/Qoats/ArpWise/releases/download/v$version/ArpWise-$version-windows-x86.zip",
+                "extract_dir": "ArpWise-$version-windows-x86"
+            },
+            "arm64": {
+                "url": "https://github.com/Qoats/ArpWise/releases/download/v$version/ArpWise-$version-windows-arm64.zip",
+                "extract_dir": "ArpWise-$version-windows-arm64"
+            }
+        },
+        "hash": {
+            "url": "$baseurl/SHA256SUMS.txt"
+        }
+    }
+}

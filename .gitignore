@@ -2,3 +2,5 @@
 *.log
 
 /dist
+/npm/vendor
+/npm/node_modules

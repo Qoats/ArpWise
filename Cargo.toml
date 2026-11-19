@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "arpwise"
 version = "0.5.1"
 edition = "2024"
@@ -6,6 +6,11 @@ description = "Fast, driver-free local network scanner with a clean GUI: devices
 license = "GPL-3.0-only"
 authors = ["Qoats"]
 readme = "README.md"
+repository = "https://github.com/Qoats/ArpWise"
+homepage = "https://qoats.github.io/ArpWise/"
+keywords = ["network", "scanner", "arp", "lan", "wake-on-lan"]
+categories = ["network-programming", "command-line-utilities"]
+exclude = [".github/", "docs/", "dist/", "npm/", "packaging/", "bucket/"]
 
 [dependencies]
 chrono = "0.4.45"

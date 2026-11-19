@@ -454,7 +454,7 @@ impl App {
                 Msg::Vendors(result) => {
                     self.busy = false;
                     self.status = match result {
-                        Ok(count) => format!("Base des fabricants mise à jour ({count} entrées). Relancez un scan."),
+                        Ok(count) => format!("Base des fabricants mise à jour ({count} entrées). Un nouveau scan est nécessaire."),
                         Err(error) => error,
                     };
                 }
@@ -530,7 +530,7 @@ impl App {
             self.status += &format!(" · {} nouveau(x)", output.new_macs.len());
         }
         if !has_vendor_database() {
-            self.status += " · cliquez sur « Fabricants » pour identifier les marques";
+            self.status += " · le bouton « Fabricants » permet d’identifier les marques";
         }
 
         self.rows = rows;
@@ -1332,7 +1332,7 @@ impl App {
 
     fn device_tab(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let Some(row) = self.selected().cloned() else {
-            ui.label(RichText::new("Sélectionnez un appareil.").color(muted(ui)));
+            ui.label(RichText::new("Aucun appareil sélectionné.").color(muted(ui)));
             return;
         };
         let device = row.device.clone();

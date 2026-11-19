@@ -52,6 +52,6 @@ pub fn export_devices(devices: &[Device], path: &Path, labels: &Labels) -> Resul
             bytes.extend(body);
             std::fs::write(path, bytes).map_err(|e| e.to_string())
         }
-        _ => Err("Format non pris en charge : utilisez .csv ou .json".into()),
+        _ => Err("Format non pris en charge : seuls .csv et .json sont acceptés".into()),
     }
 }

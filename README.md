@@ -76,6 +76,13 @@ sudo dnf install ./arpwise-*.x86_64.rpm     # Fedora
 
 The Windows installer adds a Start menu shortcut and puts the `arpwise` command on your `PATH`.
 
+On Windows, [Scoop](https://scoop.sh) can install it from this repository:
+
+```powershell
+scoop bucket add arpwise https://github.com/Qoats/ArpWise
+scoop install arpwise
+```
+
 ## Build from source
 
 Requires a recent stable [Rust](https://rustup.rs) toolchain (and the MSVC build tools on Windows).

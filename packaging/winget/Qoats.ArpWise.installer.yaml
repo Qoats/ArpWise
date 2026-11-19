@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: Qoats.ArpWise
+PackageVersion: 0.5.1
+InstallerType: zip
+NestedInstallerType: portable
+InstallModes:
+- silent
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-x64.zip
+  InstallerSha256: 59E43301E2FF0F5C9704A8D6A687369BFB9600C579E2CD5228CC201A0397AD07
+  NestedInstallerFiles:
+  - RelativeFilePath: ArpWise-0.5.1-windows-x64\arpwise.exe
+    PortableCommandAlias: arpwise
+  - RelativeFilePath: ArpWise-0.5.1-windows-x64\arpwise-gui.exe
+    PortableCommandAlias: arpwise-gui
+- Architecture: x86
+  InstallerUrl: https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-x86.zip
+  InstallerSha256: 5AE6E0A8B8B38D06C97F714897700BCC0489896544CC9602A22FF261275D36DC
+  NestedInstallerFiles:
+  - RelativeFilePath: ArpWise-0.5.1-windows-x86\arpwise.exe
+    PortableCommandAlias: arpwise
+  - RelativeFilePath: ArpWise-0.5.1-windows-x86\arpwise-gui.exe
+    PortableCommandAlias: arpwise-gui
+- Architecture: arm64
+  InstallerUrl: https://github.com/Qoats/ArpWise/releases/download/v0.5.1/ArpWise-0.5.1-windows-arm64.zip
+  InstallerSha256: 98EC3F123AC6DC1BFFEC3814EECBEE4F5CA1436702E18D44DBB1A99B53E387F8
+  NestedInstallerFiles:
+  - RelativeFilePath: ArpWise-0.5.1-windows-arm64\arpwise.exe
+    PortableCommandAlias: arpwise
+  - RelativeFilePath: ArpWise-0.5.1-windows-arm64\arpwise-gui.exe
+    PortableCommandAlias: arpwise-gui
+ManifestType: installer
+ManifestVersion: 1.6.0

@@ -75,7 +75,7 @@ pub fn parse_network(value: &str) -> Result<Network, String> {
         return Err("ArpWise ne scanne que les réseaux IPv4 privés.".into());
     }
     if network.prefix < 16 {
-        return Err("Réseau trop grand : utilisez /16 ou plus petit.".into());
+        return Err("Réseau trop grand : /16 ou plus petit uniquement.".into());
     }
     Ok(network)
 }

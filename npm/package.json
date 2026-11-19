@@ -1,0 +1,49 @@
+{
+  "name": "arpwise",
+  "version": "0.0.0",
+  "description": "Fast, driver-free local network scanner for Windows and Linux: find every device, its manufacturer and latency, get warned about new ones.",
+  "license": "GPL-3.0-only",
+  "author": "Qoats <support@axim.ch>",
+  "homepage": "https://qoats.github.io/ArpWise/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Qoats/ArpWise.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Qoats/ArpWise/issues",
+    "email": "support@axim.ch"
+  },
+  "keywords": [
+    "network",
+    "scanner",
+    "arp",
+    "lan",
+    "wake-on-lan",
+    "network-monitoring"
+  ],
+  "bin": {
+    "arpwise": "bin/arpwise.js",
+    "arpwise-gui": "bin/arpwise-gui.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install.js"
+  },
+  "os": [
+    "win32",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "ia32",
+    "arm64"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "files": [
+    "bin",
+    "scripts",
+    "README.md",
+    "LICENSE"
+  ]
+}
