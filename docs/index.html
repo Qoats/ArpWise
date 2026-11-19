@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ArpWise – tout ce qui est branché sur ton réseau, en un clic</title>
-  <meta name="description" content="ArpWise est un scanner de réseau rapide, sans pilote, pour Windows et Linux. Il liste tous les appareils de ton réseau, leur fabricant, leur vitesse, et te prévient quand un nouveau arrive.">
-  <meta property="og:title" content="ArpWise – tout ce qui est branché sur ton réseau, en un clic">
+  <title>ArpWise – tout ce qui est branché sur le réseau, en un clic</title>
+  <meta name="description" content="ArpWise est un scanner de réseau rapide, sans pilote, pour Windows et Linux. Il liste tous les appareils du réseau, leur fabricant, leur vitesse, et signale l’arrivée d’un nouveau.">
+  <meta property="og:title" content="ArpWise – tout ce qui est branché sur le réseau, en un clic">
   <meta property="og:description" content="Un scanner de réseau rapide, sans pilote, pour Windows et Linux. Gratuit et open source.">
   <meta property="og:image" content="assets/icon.png">
   <link rel="icon" type="image/png" href="assets/icon.png">
@@ -27,8 +27,8 @@
 <main>
   <div class="wrap hero">
     <p class="eyebrow">ArpWise : ARP, le protocole du réseau local, et « wise », malin.</p>
-    <h1>Tout ce qui est branché sur ton réseau, <span>en un clic.</span></h1>
-    <p class="lead">Les appareils de ta maison ou de ton bureau, leur fabricant, leur vitesse de réponse, et une alerte quand un nouveau arrive. Gratuit, sans compte, sans pub, et sans rien d’autre à installer.</p>
+    <h1>Tout ce qui est branché sur le réseau, <span>en un clic.</span></h1>
+    <p class="lead">Les appareils de la maison ou du bureau, leur fabricant, leur vitesse de réponse, et une alerte à l’arrivée d’un nouveau venu. Gratuit, sans compte, sans publicité, et sans rien d’autre à installer.</p>
     <div class="buttons">
       <a class="btn primary" id="download-main" href="#telecharger">Télécharger</a>
       <a class="btn" href="https://github.com/Qoats/ArpWise">Voir le code source</a>
@@ -45,15 +45,15 @@
 
   <section id="fonctions">
     <div class="wrap">
-      <h2>Tout ce qu’il faut pour voir ton réseau</h2>
-      <p class="sub">Écrit en Rust : un seul petit programme, rapide, qui fait tout sur ton ordinateur.</p>
+      <h2>Tout ce qu’il faut pour voir le réseau</h2>
+      <p class="sub">Écrit en Rust : un seul petit programme, rapide, qui fait tout sur l’ordinateur.</p>
       <div class="grid">
-        <div class="card"><div class="ico">◎</div><h3>Tous tes appareils</h3><p>Adresse IP, adresse MAC, nom et fabricant. ArpWise devine même le genre : box, ordinateur, téléphone, imprimante, télé…</p></div>
+        <div class="card"><div class="ico">◎</div><h3>Tous les appareils</h3><p>Adresse IP, adresse MAC, nom et fabricant. ArpWise devine même le genre : box, ordinateur, téléphone, imprimante, télé…</p></div>
         <div class="card"><div class="ico">⏱</div><h3>Leur vitesse de réponse</h3><p>La latence de chaque appareil est mesurée en même temps, avec un petit graphique pour suivre son évolution.</p></div>
         <div class="card"><div class="ico">✦</div><h3>Les nouveaux venus</h3><p>ArpWise se souvient de ce qu’il a déjà vu. Un appareil inconnu est signalé, et ceux qui sont partis restent dans la liste, grisés.</p></div>
-        <div class="card"><div class="ico">⌖</div><h3>Une carte du réseau</h3><p>Ta box au milieu, les appareils autour, placés selon leur vitesse de réponse. On voit d’un coup d’œil qui va bien et qui traîne.</p></div>
+        <div class="card"><div class="ico">⌖</div><h3>Une carte du réseau</h3><p>La box au milieu, les appareils autour, placés selon leur vitesse de réponse. Ceux qui répondent bien et ceux qui traînent se repèrent d’un coup d’œil.</p></div>
         <div class="card"><div class="ico">➜</div><h3>Des actions en un clic</h3><p>Ping, traceroute, scan de ports, ouvrir l’appareil dans le navigateur, copier l’adresse, ou le réveiller à distance (Wake-on-LAN).</p></div>
-        <div class="card"><div class="ico">⇩</div><h3>Export et ligne de commande</h3><p>Enregistre la liste en CSV ou JSON, ou pilote tout depuis ton terminal avec la commande <code>arpwise</code>.</p></div>
+        <div class="card"><div class="ico">⇩</div><h3>Export et ligne de commande</h3><p>La liste s’enregistre en CSV ou en JSON, et tout se pilote depuis un terminal avec la commande <code>arpwise</code>.</p></div>
       </div>
     </div>
   </section>
@@ -72,14 +72,14 @@
   <section id="vie-privee">
     <div class="wrap two">
       <div>
-        <h2>Ce qu’ArpWise garde de toi : rien</h2>
-        <p class="sub">Pas de compte, pas de publicité, pas d’outil de statistiques. ArpWise n’a même pas de serveur qui reçoive tes données : tout se passe sur ton ordinateur.</p>
+        <h2>Ce qu’ArpWise garde : rien</h2>
+        <p class="sub">Pas de compte, pas de publicité, pas d’outil de statistiques. ArpWise n’a même pas de serveur qui reçoive des données : tout se passe sur l’ordinateur.</p>
         <p><a href="confidentialite.html">Lire la politique de confidentialité</a></p>
       </div>
       <div class="facts">
-        <div class="fact"><strong>Tes appareils restent chez toi</strong><span>La liste, l’historique et tes étiquettes sont enregistrés sur ton ordinateur. Rien n’est envoyé à personne.</span></div>
-        <div class="fact"><strong>Deux connexions, et c’est tout</strong><span>Ton adresse IP publique est demandée à ipapi.co (onglet Réseau), et la liste des fabricants est téléchargée chez l’IEEE quand tu cliques sur « Fabricants ».</span></div>
-        <div class="fact"><strong>Du code ouvert</strong><span>Tout le code est public, sous licence GPL-3.0 : tu peux vérifier ce qu’il fait.</span></div>
+        <div class="fact"><strong>Les appareils restent sur place</strong><span>La liste, l’historique et les étiquettes sont enregistrés sur l’ordinateur. Rien n’est envoyé à personne.</span></div>
+        <div class="fact"><strong>Deux connexions, et c’est tout</strong><span>L’adresse IP publique est demandée à ipapi.co (onglet Réseau), et la liste des fabricants est téléchargée chez l’IEEE au clic sur « Fabricants ».</span></div>
+        <div class="fact"><strong>Du code ouvert</strong><span>Tout le code est public, sous licence GPL-3.0 : son fonctionnement est vérifiable.</span></div>
       </div>
     </div>
   </section>
@@ -87,7 +87,7 @@
   <section id="telecharger">
     <div class="wrap">
       <h2>Télécharger</h2>
-      <p class="sub">Clique sur le fichier qui correspond à ton système : le téléchargement démarre tout de suite. Version <span data-version>0.5.1</span>.</p>
+      <p class="sub">Un clic sur le fichier correspondant au système : le téléchargement démarre tout de suite. Version <span data-version>0.5.1</span>.</p>
       <table>
         <thead><tr><th>Système</th><th>64 bits</th><th>32 bits</th><th>ARM64</th></tr></thead>
         <tbody>
@@ -96,7 +96,7 @@
           <tr><td><strong>Linux</strong> Fedora, openSUSE…</td><td><a class="pill" data-asset="rpm-x64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/arpwise-0.5.1-1.x86_64.rpm">.rpm</a></td><td><a class="pill" data-asset="rpm-x86" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/arpwise-0.5.1-1.i686.rpm">.rpm</a></td><td><a class="pill" data-asset="rpm-arm64" href="https://github.com/Qoats/ArpWise/releases/download/v0.5.1/arpwise-0.5.1-1.aarch64.rpm">.rpm</a></td></tr>
         </tbody>
       </table>
-      <p class="sub" style="margin-top:20px">L’installateur Windows ajoute un raccourci au menu Démarrer et la commande <code>arpwise</code> à ton PATH. Windows peut afficher « éditeur inconnu », car les installateurs ne sont pas encore signés : clique sur <em>Informations complémentaires</em>, puis <em>Exécuter quand même</em>.</p>
+      <p class="sub" style="margin-top:20px">L’installateur Windows ajoute un raccourci au menu Démarrer et la commande <code>arpwise</code> au PATH. Windows peut afficher « éditeur inconnu », car les installateurs ne sont pas encore signés : cliquer sur <em>Informations complémentaires</em>, puis sur <em>Exécuter quand même</em>.</p>
     </div>
   </section>
 
@@ -110,7 +110,7 @@ arpwise
 arpwise --network 192.168.1.0/24 --ping --output appareils.csv
 <span class="c"># télécharger la liste des fabricants (une seule fois)</span>
 arpwise --update-vendors
-<span class="c"># scanner des ports d'une machine à toi, réveiller un ordinateur</span>
+<span class="c"># scanner des ports d'une machine du réseau, réveiller un ordinateur</span>
 arpwise ports 192.168.1.10 --range 22,80,8000-8100
 arpwise wake aa:bb:cc:dd:ee:ff</pre>
     </div>
@@ -125,32 +125,32 @@ arpwise wake aa:bb:cc:dd:ee:ff</pre>
         <p>Oui, entièrement : pas de publicité, pas de compte, pas d’abonnement. Le code est ouvert, sous licence GPL-3.0.</p>
       </details>
       <details>
-        <summary>Qu’est-ce qu’il voit, au juste ?</summary>
-        <p>Les appareils du même réseau local que ton ordinateur : ta box, les ordinateurs, les téléphones, les imprimantes, les objets connectés… Les appareils d’un autre réseau, derrière un routeur, ne sont pas visibles : c’est une limite du protocole ARP.</p>
+        <summary>Qu’est-ce qui est visible, au juste ?</summary>
+        <p>Les appareils du même réseau local que l’ordinateur : la box, les ordinateurs, les téléphones, les imprimantes, les objets connectés… Les appareils d’un autre réseau, derrière un routeur, restent invisibles : c’est une limite du protocole ARP.</p>
       </details>
       <details>
         <summary>Faut-il installer un pilote ou être administrateur ?</summary>
-        <p>Non. ArpWise utilise ce que ton système a déjà : l’API <code>SendARP</code> sous Windows, la table ARP du système sous Linux. Pas de Npcap, pas de Wireshark.</p>
+        <p>Non. ArpWise utilise ce que le système fournit déjà : l’API <code>SendARP</code> sous Windows, la table ARP du système sous Linux. Pas de Npcap, pas de Wireshark.</p>
       </details>
       <details>
-        <summary>Pourquoi Windows parle d’« éditeur inconnu » ?</summary>
-        <p>Les installateurs ne sont pas encore signés, ce qui demande un certificat payant. Clique sur « Informations complémentaires », puis « Exécuter quand même ». Les sommes de contrôle sont publiées avec chaque version pour vérifier les fichiers.</p>
+        <summary>Pourquoi Windows parle-t-il d’« éditeur inconnu » ?</summary>
+        <p>Les installateurs ne sont pas encore signés, ce qui demande un certificat payant. Il suffit de cliquer sur « Informations complémentaires », puis sur « Exécuter quand même ». Les sommes de contrôle sont publiées avec chaque version pour vérifier les fichiers.</p>
       </details>
       <details>
         <summary>Ça marche sur Mac ?</summary>
         <p>Pas pour l’instant : ArpWise fonctionne sous Windows (64 bits, 32 bits et ARM64) et sous Linux (x64, 32 bits et ARM64).</p>
       </details>
       <details>
-        <summary>Puis-je l’utiliser sur n’importe quel réseau ?</summary>
-        <p>Seulement sur un réseau qui t’appartient, ou que tu as le droit d’inspecter. ArpWise refuse d’ailleurs de scanner autre chose que des réseaux privés.</p>
+        <summary>Sur quels réseaux l’utiliser ?</summary>
+        <p>Uniquement sur un réseau personnel ou dont l’inspection est autorisée. ArpWise refuse d’ailleurs de scanner autre chose que des réseaux privés.</p>
       </details>
       <details>
-        <summary>Où sont enregistrées mes données ?</summary>
-        <p>Dans le dossier <code>ArpWise</code> de ton profil : <code>%APPDATA%\ArpWise</code> sous Windows, <code>~/.config/ArpWise</code> sous Linux. Tu peux l’ouvrir depuis le menu Outils.</p>
+        <summary>Où sont enregistrées les données ?</summary>
+        <p>Dans le dossier <code>ArpWise</code> du profil : <code>%APPDATA%\ArpWise</code> sous Windows, <code>~/.config/ArpWise</code> sous Linux. Le menu Outils permet de l’ouvrir.</p>
       </details>
       <details>
         <summary>Une question, un problème ?</summary>
-        <p>Écris à <a href="mailto:support@axim.ch">support@axim.ch</a>.</p>
+        <p>Écrire à <a href="mailto:support@axim.ch">support@axim.ch</a>.</p>
       </details>
     </div>
   </section>
@@ -165,7 +165,7 @@ arpwise wake aa:bb:cc:dd:ee:ff</pre>
 
 <footer>
   <div class="wrap">
-    <span>Utilise ArpWise seulement sur un réseau qui t’appartient ou que tu as le droit d’inspecter.</span>
+    <span>À utiliser uniquement sur un réseau personnel ou dont l’inspection est autorisée.</span>
     <a href="confidentialite.html">Confidentialité</a>
     <a href="https://github.com/Qoats/ArpWise">Code source</a>
     <a href="https://github.com/Qoats/ArpWise/blob/main/LICENSE">Licence GPL-3.0</a>
